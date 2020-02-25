@@ -33,7 +33,7 @@ from nipype.interfaces.base import (
     traits,
 )
 
-from dmriprep.utils.images import extract_b0, median, rescale_b0
+from dmriprep.utils.images import extract_b0, rescale_b0, summarize_images
 
 LOGGER = logging.getLogger('nipype.interface')
 
@@ -124,5 +124,5 @@ class RescaleB0(SimpleInterface):
         self._results['out_b0s'], self._results['signal_drift'] = rescale_b0(
             self.inputs.in_file, self.inputs.mask_file, out_b0s
         )
-        self._results['out_ref'] = median(self._results['out_b0s'], out_path=out_ref)
+        self._results['out_ref'] = summarize_images(self._results['out_b0s'], out_path=out_ref)
         return runtime
