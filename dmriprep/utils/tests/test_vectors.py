@@ -72,7 +72,7 @@ def test_corruption(tmpdir, dipy_test_data, monkeypatch):
 
     # Missing b0
     bval_no_b0 = bvals.copy()
-    bval_no_b0[0] = 51
+    bval_no_b0[0] = 1000
     with pytest.raises(ValueError, match='Inconsistent bvals and bvecs'):
         dgt = v.DiffusionGradientTable(
             dwi_file=dipy_test_data['dwi_file'],

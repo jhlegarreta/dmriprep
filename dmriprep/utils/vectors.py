@@ -21,7 +21,6 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """Utilities to operate on diffusion gradients."""
-
 from itertools import permutations
 from pathlib import Path
 
@@ -33,6 +32,7 @@ from .. import config
 
 B0_THRESHOLD = 50
 BVEC_NORM_EPSILON = 0.1
+BVAL_ROUND = -2
 
 
 class DiffusionGradientTable:
@@ -197,7 +197,13 @@ class DiffusionGradientTable:
             value = np.loadtxt(str(value)).flatten()
         if self.bvecs is not None and value.shape[0] != self.bvecs.shape[0]:
             raise ValueError('The number of b-vectors and b-values do not match')
-        self._bvals = np.array(value)
+        self._bvals = np.round(np.array(value) - 1, BVAL_ROUND)
+
+    @property
+    def count_shells(self):
+        """Count the number of volumes per b-value."""
+        bvals_set = sorted({int(b) for b in self._bvals})
+        return {b: int((self._bvals == b).sum()) for b in bvals_set}
 
     @property
     def b0mask(self):
@@ -310,7 +316,7 @@ def normalize_gradients(
     Normalize b-vectors and b-values.
 
     The resulting b-vectors will be of unit length for the non-zero b-values.
-    The resultinb b-values will be normalized by the square of the
+    The resulting b-values will be normalized by the square of the
     corresponding vector amplitude.
 
     Parameters
