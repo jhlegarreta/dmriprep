@@ -45,6 +45,7 @@ class _CheckGradientTableInputSpec(BaseInterfaceInputSpec):
     in_rasb = File(exists=True, xor=['in_bval', 'in_bvec'])
     b0_threshold = traits.Float(B0_THRESHOLD, usedefault=True)
     bvec_norm_epsilon = traits.Float(BVEC_NORM_EPSILON, usedefault=True)
+    b_mag = traits.Int(None, usedefault=True)
     b_scale = traits.Bool(True, usedefault=True)
 
 
@@ -110,6 +111,7 @@ class CheckGradientTable(SimpleInterface):
             bvecs=_undefined(self.inputs, 'in_bvec'),
             bvals=_undefined(self.inputs, 'in_bval'),
             rasb_file=rasb_file,
+            b_mag=self.inputs.b_mag,
             b_scale=self.inputs.b_scale,
             bvec_norm_epsilon=self.inputs.bvec_norm_epsilon,
             b0_threshold=self.inputs.b0_threshold,
