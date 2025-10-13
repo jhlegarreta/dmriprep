@@ -350,8 +350,10 @@ class execution(_Config):
     """A dictionary of BIDS selection filters."""
     boilerplate_only = False
     """Only generate a boilerplate."""
-    debug = False
+    sloppy = False
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
+    debug = []
+    """Debug mode(s)."""
     derivatives = {}
     """Path(s) to search for pre-computed derivatives"""
     fs_license_file = _fs_license
