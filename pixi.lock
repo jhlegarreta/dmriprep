@@ -1226,6 +1226,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0d/ef/153f6803c5d5f8917dbb7f7fcf6d34a871ede3296fa89c2c703f5f8a6c8e/sphinx-7.4.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e5/43/9f0e9bfb3ce02cbf7747aa2185c48a9d6e42ba95736a5e8f511a5054d976/sphinx_argparse-0.5.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/20/56411b52f917696995f5ad27d2ea7e9492c84a043c5b49a3a3173573cd93/sphinx_autobuild-2025.8.25-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/4f/43/a1aa363d38363f66a668a286691006c11866a6cb5cc75d7325a17395f337/sphinx_github_style-1.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/85/77/46e3bac77b82b4df5bb5b61f2de98637724f246b4966cfc34bc5895d852a/sphinx_rtd_theme-3.0.2-py2.py3-none-any.whl
       - pypi: git+https://github.com/rwblair/sphinxcontrib-versioning.git?rev=39b40b0b84bf872fc398feff05344051bbce0f63#39b40b0b84bf872fc398feff05344051bbce0f63
       - pypi: https://files.pythonhosted.org/packages/bf/ac/6b94ecdca590ad0596b83d78277f89d897539a6cfdc997d62f27651540bc/sphinxcontrib_apidoc-0.6.0-py3-none-any.whl
@@ -1494,6 +1495,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0d/ef/153f6803c5d5f8917dbb7f7fcf6d34a871ede3296fa89c2c703f5f8a6c8e/sphinx-7.4.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e5/43/9f0e9bfb3ce02cbf7747aa2185c48a9d6e42ba95736a5e8f511a5054d976/sphinx_argparse-0.5.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/20/56411b52f917696995f5ad27d2ea7e9492c84a043c5b49a3a3173573cd93/sphinx_autobuild-2025.8.25-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/4f/43/a1aa363d38363f66a668a286691006c11866a6cb5cc75d7325a17395f337/sphinx_github_style-1.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/85/77/46e3bac77b82b4df5bb5b61f2de98637724f246b4966cfc34bc5895d852a/sphinx_rtd_theme-3.0.2-py2.py3-none-any.whl
       - pypi: git+https://github.com/rwblair/sphinxcontrib-versioning.git?rev=39b40b0b84bf872fc398feff05344051bbce0f63#39b40b0b84bf872fc398feff05344051bbce0f63
       - pypi: https://files.pythonhosted.org/packages/bf/ac/6b94ecdca590ad0596b83d78277f89d897539a6cfdc997d62f27651540bc/sphinxcontrib_apidoc-0.6.0-py3-none-any.whl
@@ -2940,8 +2942,8 @@ packages:
   requires_python: '>=3.6'
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev42+gac3b16542.d20251013
-  sha256: 9415c80ee9433d2e89885b20017e426852cc1830ad33ca57bc1bc7ee8174e132
+  version: 25.0.0.dev45+gbf5123f43.d20251013
+  sha256: 62b359de224a448fb1a7e1031f40f9e6cb9ef057f6a43a6cc9d1b036a41c7bc0
   requires_dist:
   - dipy>=1.0.0
   - h5py
@@ -2976,6 +2978,7 @@ packages:
   - python-levenshtein ; extra == 'all'
   - sentry-sdk>=1.3 ; extra == 'all'
   - sphinx-argparse ; extra == 'all'
+  - sphinx-github-style ; extra == 'all'
   - sphinx-rtd-theme ; extra == 'all'
   - sphinx>=6.2,<8 ; extra == 'all'
   - sphinxcontrib-apidoc ; extra == 'all'
@@ -2990,6 +2993,7 @@ packages:
   - pydot>=1.2.3 ; extra == 'doc'
   - pydotplus ; extra == 'doc'
   - sphinx-argparse ; extra == 'doc'
+  - sphinx-github-style ; extra == 'doc'
   - sphinx-rtd-theme ; extra == 'doc'
   - sphinx>=6.2,<8 ; extra == 'doc'
   - sphinxcontrib-apidoc ; extra == 'doc'
@@ -2998,6 +3002,7 @@ packages:
   - pydot>=1.2.3 ; extra == 'docs'
   - pydotplus ; extra == 'docs'
   - sphinx-argparse ; extra == 'docs'
+  - sphinx-github-style ; extra == 'docs'
   - sphinx-rtd-theme ; extra == 'docs'
   - sphinx>=6.2,<8 ; extra == 'docs'
   - sphinxcontrib-apidoc ; extra == 'docs'
@@ -3021,8 +3026,8 @@ packages:
   editable: true
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev42+gac3b16542.d20251013
-  sha256: 9415c80ee9433d2e89885b20017e426852cc1830ad33ca57bc1bc7ee8174e132
+  version: 25.0.0.dev45+gbf5123f43.d20251013
+  sha256: 62b359de224a448fb1a7e1031f40f9e6cb9ef057f6a43a6cc9d1b036a41c7bc0
   requires_dist:
   - dipy>=1.0.0
   - h5py
@@ -3057,6 +3062,7 @@ packages:
   - python-levenshtein ; extra == 'all'
   - sentry-sdk>=1.3 ; extra == 'all'
   - sphinx-argparse ; extra == 'all'
+  - sphinx-github-style ; extra == 'all'
   - sphinx-rtd-theme ; extra == 'all'
   - sphinx>=6.2,<8 ; extra == 'all'
   - sphinxcontrib-apidoc ; extra == 'all'
@@ -3071,6 +3077,7 @@ packages:
   - pydot>=1.2.3 ; extra == 'doc'
   - pydotplus ; extra == 'doc'
   - sphinx-argparse ; extra == 'doc'
+  - sphinx-github-style ; extra == 'doc'
   - sphinx-rtd-theme ; extra == 'doc'
   - sphinx>=6.2,<8 ; extra == 'doc'
   - sphinxcontrib-apidoc ; extra == 'doc'
@@ -3079,6 +3086,7 @@ packages:
   - pydot>=1.2.3 ; extra == 'docs'
   - pydotplus ; extra == 'docs'
   - sphinx-argparse ; extra == 'docs'
+  - sphinx-github-style ; extra == 'docs'
   - sphinx-rtd-theme ; extra == 'docs'
   - sphinx>=6.2,<8 ; extra == 'docs'
   - sphinxcontrib-apidoc ; extra == 'docs'
@@ -7554,6 +7562,12 @@ packages:
   - httpx ; extra == 'test'
   - pytest>=6 ; extra == 'test'
   requires_python: '>=3.11'
+- pypi: https://files.pythonhosted.org/packages/4f/43/a1aa363d38363f66a668a286691006c11866a6cb5cc75d7325a17395f337/sphinx_github_style-1.2.2-py3-none-any.whl
+  name: sphinx-github-style
+  version: 1.2.2
+  sha256: 8f6fd1a2c1a5878428a010050549c8353354a1ca9650f6bb01049c649935677d
+  requires_dist:
+  - sphinx>=1.8
 - pypi: https://files.pythonhosted.org/packages/85/77/46e3bac77b82b4df5bb5b61f2de98637724f246b4966cfc34bc5895d852a/sphinx_rtd_theme-3.0.2-py2.py3-none-any.whl
   name: sphinx-rtd-theme
   version: 3.0.2

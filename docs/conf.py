@@ -10,9 +10,8 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
 import re
+
 from packaging.version import Version
 
 import dmriprep as _dmriprep
@@ -24,9 +23,6 @@ __copyright__ = getattr(
     '__copyright__',
     'The NiPreps Developers',
 )
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'sphinxext')))
-from github_link import make_linkcode_resolve
 
 # -- Project information -----------------------------------------------------
 project = __packagename__
@@ -51,6 +47,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinxarg.ext',  # argparse extension
     'sphinxcontrib.apidoc',
+    'sphinx_github_style',
     'nipype.sphinxext.plot_workflow',
     'nipype.sphinxext.apidoc',
 ]
@@ -69,6 +66,8 @@ autodoc_mock_imports = [
     'svgutils',
     'transforms3d',
 ]
+
+linkcode_url = 'https://github.com/nipreps/dmriprep/'
 
 # Accept custom section names to be parsed for numpy-style docstrings
 # of parameters.
@@ -241,13 +240,6 @@ apidoc_excluded_paths = [
 ]
 apidoc_separate_modules = True
 apidoc_extra_args = ['--module-first', '-d 1', '-T']
-
-# Options for github links
-# The following is used by sphinx.ext.linkcode to provide links to github
-linkcode_resolve = make_linkcode_resolve(
-    'dmriprep',
-    'https://github.com/nipreps/' 'dmriprep/blob/{revision}/' '{package}/{path}#L{lineno}',
-)
 
 # -- Options for intersphinx extension ---------------------------------------
 

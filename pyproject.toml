@@ -55,6 +55,7 @@ doc = [
     "pydot>=1.2.3",
     "pydotplus",
     "sphinx-argparse",
+    "sphinx-github-style",
     "sphinx-rtd-theme",
     "sphinx >= 6.2, < 8",
     "sphinxcontrib-apidoc",
