@@ -403,7 +403,7 @@ def calculate_pole(bvecs, bvec_norm_epsilon=BVEC_NORM_EPSILON):
     -------
     pole : numpy.ndarray
         A zero-vector if ``bvecs`` covers the full sphere, and the unit vector
-        locating the hemisphere pole othewise.
+        locating the hemisphere pole otherwise.
 
     Examples
     --------

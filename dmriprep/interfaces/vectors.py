@@ -123,8 +123,8 @@ class CheckGradientTable(SimpleInterface):
         return runtime
 
 
-def _undefined(objekt, name, default=None):
-    value = getattr(objekt, name)
+def _undefined(obj, name, default=None):
+    value = getattr(obj, name)
     if not isdefined(value):
         return default
     return value
