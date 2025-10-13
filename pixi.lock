@@ -1247,7 +1247,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/f4/24/2a3e3df732393fed8b3ebf2ec078f05546de641fe1b667ee316ec1dcf3b7/webencodings-0.5.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/b2/83a6ddf56cdcbad4e3d841fcc55d6ba7d19aeb89c50f24dd7e859ec0805f/websockets-15.0.1-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0c/37/6faf15cfa41bf1f3dba80cd3f5ccc6622dfccb660ab26ed79f0178c7497f/wrapt-1.17.3-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
-      - pypi: ./
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/noarch/anyio-4.11.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aom-3.9.1-h7bae524_0.conda
@@ -1514,7 +1513,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/f4/24/2a3e3df732393fed8b3ebf2ec078f05546de641fe1b667ee316ec1dcf3b7/webencodings-0.5.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/0b/33cef55ff24f2d92924923c99926dcce78e7bd922d649467f0eda8368923/websockets-15.0.1-cp313-cp313-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/45/35/6a08de0f2c96dcdd7fe464d7420ddb9a7655a6561150e5fc4da9356aeaab/wrapt-1.17.3-cp313-cp313-macosx_11_0_arm64.whl
-      - pypi: ./
   test:
     channels:
     - url: https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/
@@ -2940,8 +2938,8 @@ packages:
   requires_python: '>=3.6'
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev52+g60150c56f.d20251013
-  sha256: 08d14f19d99146326b0ba368499cb6db7de14ed18e209c02daf71e0b3401d889
+  version: 25.0.0.dev53+g528b7f3ab.d20251013
+  sha256: fb1d7cad04a25d2d09ee8da2268b1c94893e1aa627437d7e2288253719543f70
   requires_dist:
   - dipy>=1.0.0
   - h5py
@@ -3024,8 +3022,8 @@ packages:
   editable: true
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev52+g60150c56f.d20251013
-  sha256: 08d14f19d99146326b0ba368499cb6db7de14ed18e209c02daf71e0b3401d889
+  version: 25.0.0.dev53+g528b7f3ab.d20251013
+  sha256: fb1d7cad04a25d2d09ee8da2268b1c94893e1aa627437d7e2288253719543f70
   requires_dist:
   - dipy>=1.0.0
   - h5py

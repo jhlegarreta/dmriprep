@@ -240,9 +240,11 @@ dmriprep = { path = ".", editable = false }
 [tool.pixi.feature.docs]
 
 [tool.pixi.feature.docs.pypi-dependencies]
-dmriprep = { path = ".", editable = true, extras = ["doc"] }
 sphinx-autobuild = "*"
 sphinxcontrib-versioning = { git = "git+https://github.com/rwblair/sphinxcontrib-versioning.git", rev = "39b40b0b84bf872fc398feff05344051bbce0f63"}
+
+[tool.pixi.feature.docs.activation.env]
+PYTHONPATH = "$(pwd)"
 
 [tool.pixi.feature.docs.tasks.build-apidocs]
 description = "Generate API documentation stubs with sphinx-apidoc."
