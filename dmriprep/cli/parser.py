@@ -24,20 +24,23 @@
 
 import os
 import sys
+
 from .. import config
 
 
 def _build_parser():
     """Build parser object."""
+    from argparse import (
+        ArgumentDefaultsHelpFormatter,
+        ArgumentParser,
+    )
     from functools import partial
     from pathlib import Path
-    from argparse import (
-        ArgumentParser,
-        ArgumentDefaultsHelpFormatter,
-    )
+
+    from niworkflows.utils.spaces import OutputReferencesAction, Reference
     from packaging.version import Version
+
     from .version import check_latest, is_flagged
-    from niworkflows.utils.spaces import Reference, OutputReferencesAction
 
     def _path_exists(path, parser):
         """Ensure a given path exists."""
@@ -93,7 +96,7 @@ def _build_parser():
         'output_dir',
         action='store',
         type=Path,
-        help='the output path for the outcomes of preprocessing and visual ' 'reports',
+        help='the output path for the outcomes of preprocessing and visual reports',
     )
     parser.add_argument(
         'analysis_level',
@@ -168,7 +171,7 @@ def _build_parser():
     g_perfm.add_argument(
         '--low-mem',
         action='store_true',
-        help='attempt to reduce memory usage (will increase disk usage ' 'in working directory)',
+        help='attempt to reduce memory usage (will increase disk usage in working directory)',
     )
     g_perfm.add_argument(
         '--use-plugin',
@@ -358,7 +361,7 @@ is discouraged.""",
         '--stop-on-first-crash',
         action='store_true',
         default=False,
-        help='Force stopping on first crash, even if a work directory' ' was specified.',
+        help='Force stopping on first crash, even if a work directory was specified.',
     )
     g_other.add_argument(
         '--notrack',
@@ -405,6 +408,7 @@ discourage its usage.""",
 def parse_args(args=None, namespace=None):
     """Parse args and run further checks on the command line."""
     import logging
+
     from niworkflows.utils.spaces import Reference, SpatialReferences
 
     parser = _build_parser()
@@ -432,7 +436,7 @@ license file at several paths, in this order: 1) command line argument ``--fs-li
 
     # Load base plugin_settings from file if --use-plugin
     if opts.use_plugin is not None:
-        from yaml import load as loadyml
+        from yaml import safe_load as loadyml
 
         with open(opts.use_plugin) as f:
             plugin_settings = loadyml(f)
@@ -471,7 +475,7 @@ license file at several paths, in this order: 1) command line argument ``--fs-li
     if output_dir == bids_dir:
         ver = version.split('+')[0]
         parser.error(
-            "The selected output folder is the same as the input BIDS folder. "
+            'The selected output folder is the same as the input BIDS folder. '
             f'Please modify the output path (suggestion: {bids_dir / 'derivatives' / f'dmriprep-{ver}'}).'
         )
 

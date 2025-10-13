@@ -22,17 +22,18 @@
 #
 """Test parser."""
 
-from packaging.version import Version
 import pytest
-from ..parser import _build_parser
-from .. import version as _version
+from packaging.version import Version
+
 from ... import config
+from .. import version as _version
+from ..parser import _build_parser
 
 MIN_ARGS = ['data/', 'out/', 'participant']
 
 
 @pytest.mark.parametrize(
-    'args,code',
+    ('args', 'code'),
     [
         ([], 2),
         (MIN_ARGS, 2),  # bids_dir does not exist
@@ -66,7 +67,7 @@ def test_parser_valid(tmp_path, args):
 
 
 @pytest.mark.parametrize(
-    'argval,gb',
+    ('argval', 'gb'),
     [
         ('1G', 1),
         ('1GB', 1),
@@ -77,9 +78,9 @@ def test_parser_valid(tmp_path, args):
         ('1000MB', 1),
         ('1T', 1000),
         ('1TB', 1000),
-        ('%dK' % 1e6, 1),
-        ('%dKB' % 1e6, 1),
-        ('%dB' % 1e9, 1),
+        (f'{1e6:d}K', 1),
+        (f'{1e6:d}KB', 1),
+        (f'{1e9:d}B', 1),
     ],
 )
 def test_memory_arg(tmp_path, argval, gb):
@@ -96,7 +97,7 @@ def test_memory_arg(tmp_path, argval, gb):
     assert opts.memory_gb == gb
 
 
-@pytest.mark.parametrize('current,latest', [('1.0.0', '1.3.2'), ('1.3.2', '1.3.2')])
+@pytest.mark.parametrize(('current', 'latest'), [('1.0.0', '1.3.2'), ('1.3.2', '1.3.2')])
 def test_get_parser_update(monkeypatch, capsys, current, latest):
     """Make sure the out-of-date banner is shown."""
     expectation = Version(current) < Version(latest)

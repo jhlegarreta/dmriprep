@@ -34,8 +34,9 @@ a hard-limited memory-scope.
 
 def build_workflow(config_file, retval):
     """Create the Nipype Workflow that supports the whole execution graph."""
-    from niworkflows.utils.bids import collect_participants, check_pipeline_version
     from niworkflows.reports import generate_reports
+    from niworkflows.utils.bids import check_pipeline_version, collect_participants
+
     from .. import config
     from ..utils.misc import check_deps
     from ..workflows.base import init_dmriprep_wf
@@ -120,7 +121,7 @@ def build_boilerplate(config_file, workflow):
     logs_path = config.execution.output_dir / 'dmriprep' / 'logs'
     boilerplate = workflow.visit_desc()
     citation_files = {
-        ext: logs_path / (f"CITATION.{[ext for ext in ('bib', 'tex', 'md', 'html')]}")
+        ext: logs_path / (f"CITATION.{['bib', 'tex', 'md', 'html']}")
     }
 
     if boilerplate:
@@ -136,9 +137,10 @@ def build_boilerplate(config_file, workflow):
     citation_files['md'].write_text(boilerplate)
 
     if not config.execution.md_only_boilerplate and citation_files['md'].exists():
-        from subprocess import check_call, CalledProcessError, TimeoutExpired
-        from pkg_resources import resource_filename as pkgrf
         from shutil import copyfile
+        from subprocess import CalledProcessError, TimeoutExpired, check_call
+
+        from pkg_resources import resource_filename as pkgrf
 
         # Generate HTML file resolving citations
         cmd = [

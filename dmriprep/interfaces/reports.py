@@ -25,19 +25,18 @@
 import os
 import time
 
-from nipype.interfaces.base import (
-    traits,
-    TraitedSpec,
-    BaseInterfaceInputSpec,
-    File,
-    Directory,
-    InputMultiObject,
-    Str,
-    isdefined,
-    SimpleInterface,
-)
 from nipype.interfaces import freesurfer as fs
-
+from nipype.interfaces.base import (
+    BaseInterfaceInputSpec,
+    Directory,
+    File,
+    InputMultiObject,
+    SimpleInterface,
+    Str,
+    TraitedSpec,
+    isdefined,
+    traits,
+)
 
 SUBJECT_TEMPLATE = """\
 \t<ul class="elem-desc">
@@ -104,7 +103,7 @@ class SubjectSummary(SummaryInterface):
     def _run_interface(self, runtime):
         if isdefined(self.inputs.subject_id):
             self._results['subject_id'] = self.inputs.subject_id
-        return super(SubjectSummary, self)._run_interface(runtime)
+        return super()._run_interface(runtime)
 
     def _generate_segment(self):
         if not isdefined(self.inputs.subjects_dir):

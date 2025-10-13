@@ -22,9 +22,10 @@
 #
 """Write outputs (derivatives and reportlets)."""
 
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+
 from ...interfaces import DerivativesDataSink
 
 
@@ -63,12 +64,12 @@ def init_reportlets_wf(output_dir, sdc_report=False, name='reportlets_wf'):
 
     # fmt:off
     workflow.connect([
-        (inputnode, mask_reportlet, [("dwi_ref", "background_file"),
-                                     ("dwi_mask", "mask_file")]),
-        (inputnode, ds_report_validation, [("source_file", "source_file")]),
-        (inputnode, ds_report_mask, [("source_file", "source_file")]),
-        (inputnode, ds_report_validation, [("validation_report", "in_file")]),
-        (mask_reportlet, ds_report_mask, [("out_report", "in_file")]),
+        (inputnode, mask_reportlet, [('dwi_ref', 'background_file'),
+                                     ('dwi_mask', 'mask_file')]),
+        (inputnode, ds_report_validation, [('source_file', 'source_file')]),
+        (inputnode, ds_report_mask, [('source_file', 'source_file')]),
+        (inputnode, ds_report_validation, [('validation_report', 'in_file')]),
+        (mask_reportlet, ds_report_mask, [('out_report', 'in_file')]),
     ])
     # fmt:on
     if sdc_report:
@@ -81,8 +82,8 @@ def init_reportlets_wf(output_dir, sdc_report=False, name='reportlets_wf'):
         )
         # fmt:off
         workflow.connect([
-            (inputnode, ds_report_sdc, [("source_file", "source_file"),
-                                        ("sdc_report", "in_file")]),
+            (inputnode, ds_report_sdc, [('source_file', 'source_file'),
+                                        ('sdc_report', 'in_file')]),
         ])
         # fmt:on
     return workflow
@@ -138,10 +139,10 @@ def init_dwi_derivatives_wf(output_dir, name='dwi_derivatives_wf'):
 
     # fmt:off
     workflow.connect([
-        (inputnode, ds_reference, [("source_file", "source_file"),
-                                   ("dwi_ref", "in_file")]),
-        (inputnode, ds_mask, [("source_file", "source_file"),
-                              ("dwi_mask", "in_file")]),
+        (inputnode, ds_reference, [('source_file', 'source_file'),
+                                   ('dwi_ref', 'in_file')]),
+        (inputnode, ds_mask, [('source_file', 'source_file'),
+                              ('dwi_mask', 'in_file')]),
     ])
     # fmt:on
 

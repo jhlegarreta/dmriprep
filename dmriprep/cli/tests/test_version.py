@@ -24,10 +24,12 @@
 
 from datetime import datetime
 from pathlib import Path
-from packaging.version import Version
+
 import pytest
+from packaging.version import Version
+
 from .. import version as _version
-from ..version import check_latest, DATE_FMT, requests, is_flagged
+from ..version import DATE_FMT, check_latest, is_flagged, requests
 
 
 class MockResponse:

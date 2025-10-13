@@ -22,10 +22,11 @@
 #
 """Utilities to handle BIDS inputs."""
 
+import json
 import os
 import sys
-import json
 from pathlib import Path
+
 from bids import BIDSLayout
 
 
@@ -58,7 +59,7 @@ def collect_data(bids_dir, participant_label, bids_validate=True):
 
 
 def write_derivative_description(bids_dir, deriv_dir):
-    from ..__about__ import __version__, __url__, DOWNLOAD_URL
+    from ..__about__ import DOWNLOAD_URL, __url__, __version__
 
     bids_dir = Path(bids_dir)
     deriv_dir = Path(deriv_dir)
@@ -103,8 +104,8 @@ def write_derivative_description(bids_dir, deriv_dir):
 
 def validate_input_dir(exec_env, bids_dir, participant_label):
     # Ignore issues and warnings that should not influence dMRIPrep
-    import tempfile
     import subprocess
+    import tempfile
 
     validator_config_dict = {
         'ignore': [
@@ -149,8 +150,8 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
     }
     # Limit validation only to data from requested participants
     if participant_label:
-        all_subs = set([s.name[4:] for s in bids_dir.glob('sub-*')])
-        selected_subs = set([s[4:] if s.startswith('sub-') else s for s in participant_label])
+        all_subs = {s.name[4:] for s in bids_dir.glob('sub-*')}
+        selected_subs = {s[4:] if s.startswith('sub-') else s for s in participant_label}
         bad_labels = selected_subs.difference(all_subs)
         if bad_labels:
             error_msg = (

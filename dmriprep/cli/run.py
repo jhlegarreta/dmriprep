@@ -28,22 +28,24 @@ from .. import config
 
 def main():
     """Entry point."""
+    import gc
     import os
     import sys
-    import gc
-    from multiprocessing import Process, Manager
-    from .parser import parse_args
+    from multiprocessing import Manager, Process
+
     from ..utils.bids import write_derivative_description
+    from .parser import parse_args
 
     parse_args()
 
     popylar = None
     if not config.execution.notrack:
         import popylar
+
         from ..__about__ import __ga_id__
 
         config.loggers.cli.info(
-            'Your usage of dmriprep is being recorded using popylar (https://popylar.github.io/). ',  # noqa
+            'Your usage of dmriprep is being recorded using popylar (https://popylar.github.io/). ',
             'For details, see https://nipreps.github.io/dmriprep/usage.html. ',
             'To opt out, call dmriprep with a `--notrack` flag',
         )
@@ -127,8 +129,8 @@ def main():
             )
 
         if config.workflow.run_reconall:
-            from templateflow import api
             from niworkflows.utils.misc import _copy_any
+            from templateflow import api
 
             dseg_tsv = str(api.get('fsaverage', suffix='dseg', extension=['.tsv']))
             _copy_any(

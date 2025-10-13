@@ -68,8 +68,8 @@ The :py:mod:`config` is responsible for other convenience actions.
 
 """
 
-from multiprocessing import set_start_method
 import warnings
+from multiprocessing import set_start_method
 
 # cmp is not used by dmriprep, so ignore nipype-generated warnings
 warnings.filterwarnings('ignore', 'cmp not installed')
@@ -88,16 +88,20 @@ except RuntimeError:
 finally:
     # Defer all custom import for after initializing the forkserver and
     # ignoring the most annoying warnings
+    import logging
     import os
     import sys
-    import logging
-
-    from uuid import uuid4
+    from contextlib import suppress
     from pathlib import Path
     from time import strftime
-    from niworkflows.utils.spaces import SpatialReferences as _SRs, Reference as _Ref
-    from nipype import logging as nlogging, __version__ as _nipype_ver
+    from uuid import uuid4
+
+    from nipype import __version__ as _nipype_ver
+    from nipype import logging as nlogging
+    from niworkflows.utils.spaces import Reference as _Ref
+    from niworkflows.utils.spaces import SpatialReferences as _SRs
     from templateflow import __version__ as _tf_ver
+
     from .. import __version__
 
 
@@ -134,16 +138,17 @@ _templateflow_home = Path(
     os.getenv('TEMPLATEFLOW_HOME', os.path.join(os.getenv('HOME'), '.cache', 'templateflow'))
 )
 
-try:
+_free_mem_at_start = None
+
+with suppress(Exception):
     from psutil import virtual_memory
 
     _free_mem_at_start = round(virtual_memory().free / 1024**3, 1)
-except Exception:
-    _free_mem_at_start = None
+
 
 _oc_limit = 'n/a'
 _oc_policy = 'n/a'
-try:
+with suppress(Exception):
     # Memory policy may have a large effect on types of errors experienced
     _proc_oc_path = Path('/proc/sys/vm/overcommit_memory')
     if _proc_oc_path.exists():
@@ -156,14 +161,12 @@ try:
                 _oc_limit = _proc_oc_kbytes.read_text().strip()
             if _oc_limit in ('0', 'n/a') and Path('/proc/sys/vm/overcommit_ratio').exists():
                 _oc_limit = f"{Path('/proc/sys/vm/overcommit_ratio').read_text().strip()}%"
-except Exception:
-    pass
 
 
 class _Config:
     """An abstract class forbidding instantiation."""
 
-    _paths = tuple()
+    _paths = ()
 
     def __init__(self):
         """Avert instantiation."""
@@ -254,7 +257,7 @@ class nipype(_Config):
     omp_nthreads = os.cpu_count()
     """Number of CPUs a single process can access for multithreaded execution."""
     parameterize_dirs = False
-    """The node’s output directory will contain full parameterization of any iterable, otherwise
+    """The node's output directory will contain full parameterization of any iterable, otherwise
     parameterizations over 32 characters will be replaced by their hash."""
     plugin = 'MultiProc'
     """NiPype's execution plugin."""
@@ -386,6 +389,7 @@ class execution(_Config):
         """Create a new BIDS Layout accessible with :attr:`~execution.layout`."""
         if cls._layout is None:
             import re
+
             from bids.layout import BIDSLayout
 
             work_dir = cls.work_dir / 'bids.db'
@@ -454,7 +458,7 @@ class workflow(_Config):
 class loggers:
     """Keep loggers easily accessible (see :py:func:`init`)."""
 
-    _fmt = '%(asctime)s,%(msecs)d %(name)-2s ' '%(levelname)-2s:\n\t %(message)s'
+    _fmt = '%(asctime)s,%(msecs)d %(name)-2s %(levelname)-2s:\n\t %(message)s'
     _datefmt = '%y%m%d-%H:%M:%S'
 
     default = logging.getLogger()
@@ -526,7 +530,7 @@ def get(flat=False):
         return settings
 
     return {
-        '.'.join((section, k)): v
+        f'{section}.{k}': v
         for section, configs in settings.items()
         for k, v in configs.items()
     }

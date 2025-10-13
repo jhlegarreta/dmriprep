@@ -25,10 +25,11 @@
 import os
 import tempfile
 from pathlib import Path
-import numpy as np
+
 import nibabel as nb
+import numpy as np
 import pytest
-from dipy.data.fetcher import _make_fetcher, UW_RW_URL
+from dipy.data.fetcher import UW_RW_URL, _make_fetcher
 
 _dipy_datadir_root = os.getenv('DMRIPREP_TESTS_DATA') or Path.home()
 dipy_datadir = Path(_dipy_datadir_root) / '.cache' / 'data'
@@ -70,7 +71,7 @@ def doctest_autoimport(doctest_namespace):
     tmpdir.cleanup()
 
 
-@pytest.fixture()
+@pytest.fixture
 def dipy_test_data(scope='session'):
     """Create a temporal directory shared across tests to pull data in."""
     return _sherbrooke_data

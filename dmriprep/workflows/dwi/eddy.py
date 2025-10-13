@@ -31,8 +31,8 @@ Eddy-currents and head-motion estimation/correction.
 
 """
 
-from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
+from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
 
@@ -54,9 +54,10 @@ def gen_eddy_textfiles(in_file, in_meta, newpath=None):
 
     """
     from pathlib import Path
+
     import nibabel as nb
-    from sdcflows.utils.epimanip import get_trt
     from nipype.utils.filemanip import fname_presuffix
+    from sdcflows.utils.epimanip import get_trt
 
     # Generate output file name
     newpath = Path(newpath or '.')
@@ -153,25 +154,25 @@ included in FSL {Eddy().version} [@eddy].
     # fmt:off
     workflow.connect([
         (inputnode, eddy, [
-            ("dwi_file", "in_file"),
-            ("dwi_mask", "in_mask"),
-            ("in_bvec", "in_bvec"),
-            ("in_bval", "in_bval"),
+            ('dwi_file', 'in_file'),
+            ('dwi_mask', 'in_mask'),
+            ('in_bvec', 'in_bvec'),
+            ('in_bval', 'in_bval'),
         ]),
         (inputnode, gen_eddy_files, [
-            ("dwi_file", "in_file"),
-            ("metadata", "in_meta")
+            ('dwi_file', 'in_file'),
+            ('metadata', 'in_meta')
         ]),
         (gen_eddy_files, eddy, [
-            ("out_acqparams", "in_acqp"),
-            ("out_index", "in_index"),
+            ('out_acqparams', 'in_acqp'),
+            ('out_index', 'in_index'),
         ]),
         (eddy, outputnode, [
-            ("out_corrected", "out_eddy"),
-            ("out_rotated_bvecs", "out_rotated_bvecs")
+            ('out_corrected', 'out_eddy'),
+            ('out_rotated_bvecs', 'out_rotated_bvecs')
         ]),
-        (eddy, eddy_ref_img, [("out_corrected", "in_file")]),
-        (eddy_ref_img, outputnode, [("roi_file", "eddy_ref_image")]),
+        (eddy, eddy_ref_img, [('out_corrected', 'in_file')]),
+        (eddy_ref_img, outputnode, [('roi_file', 'eddy_ref_image')]),
     ])
     # fmt:on
     return workflow

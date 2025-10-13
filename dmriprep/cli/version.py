@@ -22,9 +22,12 @@
 #
 """Version CLI helpers."""
 
-from pathlib import Path
+from contextlib import suppress
 from datetime import datetime
+from pathlib import Path
+
 import requests
+
 from .. import __version__
 
 RELEASE_EXPIRY_DAYS = 14
@@ -33,7 +36,7 @@ DATE_FMT = '%Y%m%d'
 
 def check_latest():
     """Determine whether this is the latest version."""
-    from packaging.version import Version, InvalidVersion
+    from packaging.version import InvalidVersion, Version
 
     latest = None
     date = None
@@ -41,11 +44,10 @@ def check_latest():
     cachefile = Path.home() / '.cache' / 'dmriprep' / 'latest'
     cachefile.parent.mkdir(parents=True, exist_ok=True)
 
-    try:
+    with suppress(Exception):
         latest, date = cachefile.read_text().split('|')
-    except Exception:
-        pass
-    else:
+
+    if latest and date:
         try:
             latest = Version(latest)
             date = datetime.strptime(date, DATE_FMT)
@@ -56,24 +58,18 @@ def check_latest():
                 outdated = True
 
     if latest is None or outdated is True:
-        try:
+        with suppress(Exception):
             response = requests.get(url='https://pypi.org/pypi/dmriprep/json', timeout=1.0)
-        except Exception:
-            response = None
 
-        if response and response.status_code == 200:
-            versions = [Version(rel) for rel in response.json()['releases'].keys()]
-            versions = [rel for rel in versions if not rel.is_prerelease]
-            if versions:
-                latest = sorted(versions)[-1]
-        else:
-            latest = None
+            if response and response.status_code == 200:
+                versions = [Version(rel) for rel in response.json()['releases'].keys()]
+                versions = [rel for rel in versions if not rel.is_prerelease]
+                if versions:
+                    latest = sorted(versions)[-1]
 
     if latest is not None:
-        try:
+        with suppress(Exception):
             cachefile.write_text('|'.join((f'{latest}', datetime.now().strftime(DATE_FMT))))
-        except Exception:
-            pass
 
     return latest
 
@@ -81,20 +77,20 @@ def check_latest():
 def is_flagged():
     """Check whether current version is flagged."""
     # https://raw.githubusercontent.com/nipreps/dmriprep/master/.versions.json
-    flagged = tuple()
-    try:
+    response = None
+
+    with suppress(Exception):
         response = requests.get(
             url="""\
 https://raw.githubusercontent.com/nipreps/dmriprep/master/.versions.json""",
             timeout=1.0,
         )
-    except Exception:
-        response = None
 
-    if response and response.status_code == 200:
-        flagged = response.json().get('flagged', {}) or {}
+    flagged = (
+        response.json().get('flagged', {}) or {}
+        if response and response.status_code == 200
+        else {}
+    )
 
-    if __version__ in flagged:
-        return True, flagged[__version__]
-
-    return False, None
+    reason = flagged.get(__version__, None)
+    return reason is not None, reason

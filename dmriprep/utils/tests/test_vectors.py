@@ -22,11 +22,13 @@
 #
 """Test vector utilities."""
 
-import pytest
-import numpy as np
-import nibabel as nb
-from dmriprep.utils import vectors as v
 from collections import namedtuple
+
+import nibabel as nb
+import numpy as np
+import pytest
+
+from dmriprep.utils import vectors as v
 
 
 def test_corruption(tmpdir, dipy_test_data, monkeypatch):

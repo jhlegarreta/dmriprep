@@ -49,7 +49,7 @@ def read_md_table(md_text):
             break
 
         values = [v.strip() or None for v in line.split('|')][1:-1]
-        retval.append({k: v for k, v in zip(keys, values) if v})
+        retval.append({k: v for k, v in zip(keys, values, strict=False) if v})
 
     return retval
 
@@ -188,7 +188,7 @@ def zenodo(
     misses = set(miss_creators).intersection(miss_contributors)
     if misses:
         print(
-            "Some people made commits, but are missing in .maint/ " f"files: {', '.join(misses)}",
+            f"Some people made commits, but are missing in .maint/ files: {', '.join(misses)}",
             file=sys.stderr,
         )
 
@@ -244,7 +244,7 @@ def publication(
     hits = [hit for hit in hits if hit['name'] not in pi_names] + pi_hits
 
     def _aslist(value):
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             return value
         return [value]
 
@@ -259,7 +259,7 @@ def publication(
     aff_indexes = [
         ', '.join(
             [
-                '%d' % (affiliations.index(a) + 1)
+                f'{affiliations.index(a) + 1:d}'
                 for a in _aslist(author.get('affiliation', 'Unaffiliated'))
             ]
         )
@@ -268,15 +268,15 @@ def publication(
 
     if misses:
         print(
-            "Some people made commits, but are missing in .maint/ " f"files: {', '.join(misses)}",
+            f"Some people made commits, but are missing in .maint/ files: {', '.join(misses)}",
             file=sys.stderr,
         )
 
-    print('Authors (%d):' % len(hits))
+    print(f'Authors ({len(hits)}):')
     print(
         '{}.'.format(
             '; '.join(
-                ['{} \\ :sup:`{}`\\ '.format(i['name'], idx) for i, idx in zip(hits, aff_indexes)]
+                ['{} \\ :sup:`{}`\\ '.format(i['name'], idx) for i, idx in zip(hits, aff_indexes, strict=False)]
             )
         )
     )

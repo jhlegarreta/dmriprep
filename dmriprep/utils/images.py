@@ -22,8 +22,8 @@
 #
 """Utilities to handle images."""
 
-import numpy as np
 import nibabel as nb
+import numpy as np
 from nipype.utils.filemanip import fname_presuffix
 
 

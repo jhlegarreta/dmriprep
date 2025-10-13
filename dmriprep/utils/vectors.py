@@ -22,12 +22,14 @@
 #
 """Utilities to operate on diffusion gradients."""
 
-from .. import config
-from pathlib import Path
 from itertools import permutations
+from pathlib import Path
+
 import nibabel as nb
 import numpy as np
 from dipy.core.gradients import round_bvals
+
+from .. import config
 
 B0_THRESHOLD = 50
 BVEC_NORM_EPSILON = 0.1
@@ -162,7 +164,7 @@ class DiffusionGradientTable:
 
     @affine.setter
     def affine(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             dwi_file = nb.load(str(value))
             self._affine = dwi_file.affine.copy()
             return
@@ -172,13 +174,13 @@ class DiffusionGradientTable:
 
     @gradients.setter
     def gradients(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             value = np.loadtxt(value, skiprows=1)
         self._gradients = value
 
     @bvecs.setter
     def bvecs(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             value = np.loadtxt(str(value)).T
         else:
             value = np.array(value, dtype='float32')
@@ -191,7 +193,7 @@ class DiffusionGradientTable:
 
     @bvals.setter
     def bvals(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             value = np.loadtxt(str(value)).flatten()
         if self.bvecs is not None and value.shape[0] != self.bvecs.shape[0]:
             raise ValueError('The number of b-vectors and b-values do not match')

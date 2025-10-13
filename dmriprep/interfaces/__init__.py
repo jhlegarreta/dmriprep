@@ -4,10 +4,14 @@
 
 from nipype.interfaces.base import OutputMultiObject, SimpleInterface
 from niworkflows.interfaces.bids import (
-    DerivativesDataSink as _DDS,
-    _BIDSDataGrabberOutputSpec,
-    _BIDSDataGrabberInputSpec,
     LOGGER as _LOGGER,
+)
+from niworkflows.interfaces.bids import (
+    DerivativesDataSink as _DDS,
+)
+from niworkflows.interfaces.bids import (
+    _BIDSDataGrabberInputSpec,
+    _BIDSDataGrabberOutputSpec,
 )
 
 
@@ -28,7 +32,7 @@ class BIDSDataGrabber(SimpleInterface):
 
     def __init__(self, *args, **kwargs):
         anat_only = kwargs.pop('anat_only', False)
-        super(BIDSDataGrabber, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if anat_only is not None:
             self._require_dwis = not anat_only
 

@@ -23,17 +23,19 @@
 """Handling the gradient table."""
 
 from pathlib import Path
+
 import numpy as np
-from nipype.utils.filemanip import fname_presuffix
 from nipype.interfaces.base import (
-    SimpleInterface,
     BaseInterfaceInputSpec,
-    TraitedSpec,
     File,
-    traits,
+    SimpleInterface,
+    TraitedSpec,
     isdefined,
+    traits,
 )
-from ..utils.vectors import DiffusionGradientTable, B0_THRESHOLD, BVEC_NORM_EPSILON
+from nipype.utils.filemanip import fname_presuffix
+
+from ..utils.vectors import B0_THRESHOLD, BVEC_NORM_EPSILON, DiffusionGradientTable
 
 
 class _CheckGradientTableInputSpec(BaseInterfaceInputSpec):
