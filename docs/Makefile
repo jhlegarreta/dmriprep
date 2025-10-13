@@ -2,11 +2,11 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    =
+SPHINXOPTS    ?= --keep-going -n
 SPHINXBUILD   = sphinx-build
 PAPER         =
-BUILDDIR      = _build
-CURBRANCH     = master
+BUILDDIR      ?= _build
+CURBRANCH     ?= master
 PYTHONPATH    = $(PWD)
 
 # User-friendly check for sphinx-build

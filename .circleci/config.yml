@@ -8,7 +8,7 @@ docs_deploy: &docs
         at: docs/_build
     - run:
         name: Disable jekyll builds
-        command: touch docs/_build/html/.nojekyll
+        command: touch docs/_build/versioned/html/.nojekyll
     - run:
         name: Install and configure dependencies
         command: |
@@ -20,7 +20,7 @@ docs_deploy: &docs
           - "29:00:83:05:e9:af:5d:0f:3b:18:7a:3f:0a:98:1a:ef"
     - run:
         name: Deploy docs to gh-pages branch
-        command: gh-pages --dotfiles --message "doc(update) [skip ci]" --dist docs/_build/html
+        command: gh-pages --dotfiles --message "doc(update) [skip ci]" --dist docs/_build/versioned/html
 
 _machine_defaults: &machine_defaults
   environment:
@@ -373,7 +373,7 @@ jobs:
 
   build_docs:
     docker:
-      - image: python:3.12
+      - image: ghcr.io/prefix-dev/pixi:0.53.0
     environment:
       - FSLOUTPUTTYPE: NIFTI
       - SUBJECTS_DIR: /tmp/subjects
@@ -386,7 +386,7 @@ jobs:
             - docs-v1-master
             - docs-v1-
           paths:
-            - ./docs/_build/_html
+            - ./docs/_build/html
       - checkout
       - run:
           name: Create subjects folder
@@ -399,9 +399,9 @@ jobs:
           command: pip install --no-cache-dir -r docs/requirements.txt
       - run:
           name: Build only this commit
-          command: make -C docs SPHINXOPTS="-W" BUILDDIR="_build/no_version_html" html
+          command: SPHINXOPTS="-W" BUILDDIR="_build/unversioned" pixi run build-docs
       - store_artifacts:
-          path: ./docs/_build/no_version_html
+          path: ./docs/_build/unversioned/html
       - run:
           name: Generate Versioned Docs
           command: |
@@ -412,17 +412,19 @@ jobs:
               echo "Not a tag or master branch - skipping versioned docs."
               circleci step halt
             else
-              make -f ./docs/Makefile versioned CURBRANCH=${CIRCLE_TAG:-$CIRCLE_BRANCH}
+              CURBRANCH=${CIRCLE_TAG:-$CIRCLE_BRANCH} BUILDDIR="_build/unversioned" pixi run build-versioneddocs
             fi
       - save_cache:
           key: docs-v1-{{ .Branch }}-{{ .Revision }}
           paths:
-            - ./docs/_build/_html
+            - ./docs/_build/versioned/html
       - persist_to_workspace:
           root: docs/_build
-          paths: html
+          paths:
+            - versioned/html
+            - unversioned/html
       - store_artifacts:
-          path: ./docs/_build/html
+          path: ./docs/_build/versioned/html
 
   deploy_docs_tag:
     <<: *docs
