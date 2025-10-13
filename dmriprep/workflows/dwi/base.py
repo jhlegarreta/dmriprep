@@ -211,7 +211,7 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
 
         bbr_wf = init_bbreg_wf(
             debug=config.execution.debug,
-            epi2t1w_init=config.workflow.dwi2t1w_init,
+            epi2t1w_init=config.workflow.dwi2anat_init,
             omp_nthreads=config.nipype.omp_nthreads,
         )
 

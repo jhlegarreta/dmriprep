@@ -350,12 +350,14 @@ class execution(_Config):
     """A dictionary of BIDS selection filters."""
     boilerplate_only = False
     """Only generate a boilerplate."""
-    sloppy = False
-    """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
+    dataset_links = {}
+    """A dictionary of dataset links to be used to track Sources in sidecars."""
     debug = []
     """Debug mode(s)."""
     derivatives = {}
     """Path(s) to search for pre-computed derivatives"""
+    dmriprep_dir = None
+    """Root of dMRIPrep BIDS Derivatives dataset. Depends on output_layout."""
     fs_license_file = _fs_license
     """An existing file containing a FreeSurfer license."""
     fs_subjects_dir = None
@@ -371,18 +373,26 @@ class execution(_Config):
     md_only_boilerplate = False
     """Do not convert boilerplate from MarkDown to LaTex and HTML."""
     notrack = False
-    """Do not monitor *dMRIPrep* using Google Analytics."""
+    """Do not collect telemetry information for *dMRIPrep*."""
     output_dir = None
     """Folder where derivatives will be stored."""
+    output_layout = None
+    """Layout of derivatives within output_dir."""
     output_spaces = None
     """List of (non)standard spaces designated (with the ``--output-spaces`` flag of
     the command line) as spatial references for outputs."""
+    processing_groups = None
+    """List of tuples (participant, session(s)) that will be preprocessed."""
+    participant_label = None
+    """List of participant identifiers that are to be preprocessed."""
     reports_only = False
     """Only build the reports, based on the reportlets found in a cached working directory."""
     run_uuid = f'{strftime("%Y%m%d-%H%M%S")}_{uuid4()}'
     """Unique identifier of this particular run."""
-    participant_label = None
-    """List of participant identifiers that are to be preprocessed."""
+    session_label = None
+    """List of session identifiers that are to be preprocessed."""
+    sloppy = False
+    """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
     templateflow_home = _templateflow_home
     """The root folder of the TemplateFlow client."""
     work_dir = Path('work').absolute()
@@ -495,31 +505,46 @@ class workflow(_Config):
 
     anat_only = False
     """Execute the anatomical preprocessing only."""
-    dwi2t1w_init = 'register'
-    """Whether to use standard coregistration ('register') or to initialize coregistration from the
-    DWI header ('header')."""
+    dwi2anat_dof = None
+    """Degrees of freedom of the DWI-to-anatomical registration steps."""
+    dwi2anat_init = 'auto'
+    """Method of initial DWI to anatomical coregistration. If `auto`, a T2w image is used
+    if available, otherwise the T1w image. `t1w` forces use of the T1w, `t2w` forces use of
+    the T2w, and `header` uses the DWI header information without an initial registration."""
     fmap_bspline = None
     """Regularize fieldmaps with a field of B-Spline basis."""
     fmap_demean = None
     """Remove the mean from fieldmaps."""
-    force_syn = None
-    """Run *fieldmap-less* susceptibility-derived distortions estimation."""
+    force = None
+    """Force particular steps for *dMRIPrep*."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     ignore = None
     """Ignore particular steps for *dMRIPrep*."""
-    longitudinal = False
-    """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
+    level = None
+    """Level of preprocessing to complete. One of ['minimal', 'resampling', 'full']."""
+    run_msmsulc = True
+    """Run Multimodal Surface Matching surface registration."""
     run_reconall = True
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
     skull_strip_template = 'OASIS30ANTs'
     """Change default brain extraction template."""
+    skull_strip_t1w = 'force'
+    """Skip brain extraction of the T1w image (default is ``force``, meaning that
+    *dMRIPrep* will run brain extraction of the T1w)."""
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
-    use_syn = None
+    subject_anatomical_reference = 'first-lex'
+    """Method to produce the reference anatomical space. Available options are:
+    `first-lex` will use the first image in lexicographical order, `unbiased` will
+    construct an unbiased template from all available images,
+    and `sessionwise` will independently process each session."""
+    use_bbr = None
+    """Run boundary-based registration for DWI-to-T1w registration."""
+    use_syn_sdc = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation
     in the absence of any alternatives."""
 
