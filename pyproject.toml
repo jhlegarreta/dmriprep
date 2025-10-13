@@ -227,47 +227,49 @@ source = [
 
 [tool.pixi.workspace]
 channels = ["https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public", "mrtrix3", "conda-forge"]
-platforms = ["linux-64", "osx-arm64"]
-
-[tool.pixi.activation.env]
-FSLDIR = "$CONDA_PREFIX"
+platforms = ["linux-64"]
+# platforms = ["linux-64", "osx-arm64"]  # Enable for MacOS
 
 [tool.pixi.feature.editable.pypi-dependencies]
 dmriprep = { path = ".", editable = true }
 [tool.pixi.feature.production.pypi-dependencies]
 dmriprep = { path = ".", editable = false }
 
-[tool.pixi.feature.docs]
-
-[tool.pixi.feature.docs.pypi-dependencies]
+[tool.pixi.feature.documentation.pypi-dependencies]
 sphinx-autobuild = "*"
 sphinxcontrib-versioning = { git = "git+https://github.com/rwblair/sphinxcontrib-versioning.git", rev = "39b40b0b84bf872fc398feff05344051bbce0f63"}
 
-[tool.pixi.feature.docs.activation.env]
+[tool.pixi.feature.documentation.activation.env]
 PYTHONPATH = "$(pwd)"
 
-[tool.pixi.feature.docs.tasks.build-apidocs]
+[tool.pixi.feature.documentation.tasks.build-apidocs]
 description = "Generate API documentation stubs with sphinx-apidoc."
 cmd = 'sphinx-apidoc --module-first -d 1 -T -o docs/api dmriprep dmriprep/tests dmriprep/data dmriprep/config/testing.py'
 
-[tool.pixi.feature.docs.tasks.build-docs]
+[tool.pixi.feature.documentation.tasks.build-docs]
 description = "Build the HTML documentation with Sphinx."
 cwd = "docs"
 cmd = 'make html'
 
-[tool.pixi.feature.docs.tasks.build-versioneddocs]
+[tool.pixi.feature.documentation.tasks.build-versioneddocs]
 description = "Build the HTML documentation with Sphinx."
 cmd = 'make -f ./docs/Makefile versioned'
 
-[tool.pixi.feature.docs.tasks.docs]
+[tool.pixi.feature.documentation.tasks.docs]
 description = "Serve documentation with sphinx-autobuild for live previews."
 cmd = "sphinx-autobuild docs/ docs/_build/html --host 0.0.0.0 --port 8000 --watch docs"
+
+[tool.pixi.feature.documentation.dependencies]
+make = ">=4.4.1,<5"
 
 [tool.pixi.feature.test]
 
 [tool.pixi.feature.test.pypi-dependencies]
 dmriprep = { path = ".", editable = true, extras = ["test"] }
 tox = "*"
+
+[tool.pixi.feature.test.dependencies]
+dipy = ">=1.11.0,<2"
 
 [tool.pixi.feature.test.tasks.tox]
 description = "Run tox."
@@ -276,21 +278,25 @@ cmd = "tox"
 [tool.pixi.feature.container]
 
 [tool.pixi.feature.container.dependencies]
+dipy = ">=1.11.0,<2"
 nodejs = ">=24.4.1,<24.10"
+
+[tool.pixi.feature.container.activation.env]
+FSLDIR = "$CONDA_PREFIX"
 
 [tool.pixi.environments]
 # Local installs will use editable
 default = { features = ["editable"], solve-group = "default" }
 test = { features = ["editable", "test"], solve-group = "default" }
-docs = { features = ["docs"], solve-group = "default" }
+docs = { features = ["documentation", "doc"], solve-group = "documentation" }
 # Use "dmriprep" feature for production environment, so it is identifiable
 dmriprep = { features = ["production", "container", "telemetry"], solve-group = "production" }
 
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-dipy = ">=1.11.0,<2"
 hatch = ">=1.14.1,<2"
+python = ">=3.10"
 
 [tool.codespell]
 skip = ["boilerplate.bib"]
