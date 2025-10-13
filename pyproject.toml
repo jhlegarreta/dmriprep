@@ -242,18 +242,25 @@ sphinxcontrib-versioning = { git = "git+https://github.com/rwblair/sphinxcontrib
 [tool.pixi.feature.documentation.activation.env]
 PYTHONPATH = "$(pwd)"
 
+[tool.pixi.feature.documentation.tasks.update-version]
+description = "Interpolate the current version."
+cmd = 'hatch build --hooks-only'
+
 [tool.pixi.feature.documentation.tasks.build-apidocs]
 description = "Generate API documentation stubs with sphinx-apidoc."
 cmd = 'sphinx-apidoc --module-first -d 1 -T -o docs/api dmriprep dmriprep/tests dmriprep/data dmriprep/config/testing.py'
+depends-on = ["update-version"]
 
 [tool.pixi.feature.documentation.tasks.build-docs]
 description = "Build the HTML documentation with Sphinx."
 cwd = "docs"
 cmd = 'make html'
+depends-on = ["update-version"]
 
 [tool.pixi.feature.documentation.tasks.build-versioneddocs]
 description = "Build the HTML documentation with Sphinx."
 cmd = 'make -f ./docs/Makefile versioned'
+depends-on = ["update-version"]
 
 [tool.pixi.feature.documentation.tasks.docs]
 description = "Serve documentation with sphinx-autobuild for live previews."
@@ -261,6 +268,8 @@ cmd = "sphinx-autobuild docs/ docs/_build/html --host 0.0.0.0 --port 8000 --watc
 
 [tool.pixi.feature.documentation.dependencies]
 make = ">=4.4.1,<5"
+hatchling = ">=1.27.0,<2"
+hatch-vcs = ">=0.5.0,<0.6"
 
 [tool.pixi.feature.test]
 
@@ -299,4 +308,4 @@ hatch = ">=1.14.1,<2"
 python = ">=3.10"
 
 [tool.codespell]
-skip = ["boilerplate.bib"]
+skip = ["boilerplate.bib", "pixi.lock"]
