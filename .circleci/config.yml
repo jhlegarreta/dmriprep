@@ -396,7 +396,7 @@ jobs:
           command: apt update && apt -y install graphviz git
       - run:
           name: Build only this commit
-          command: SPHINXOPTS="-W" BUILDDIR="_build/unversioned" pixi run -e docs build-docs
+          command: SPHINXOPTS="-W" BUILDDIR="_build/unversioned" pixi run build-docs
       - store_artifacts:
           path: ./docs/_build/unversioned/html
       - run:
@@ -409,7 +409,7 @@ jobs:
               echo "Not a tag or master branch - skipping versioned docs."
               circleci step halt
             else
-              CURBRANCH=${CIRCLE_TAG:-$CIRCLE_BRANCH} BUILDDIR="_build/unversioned" pixi run -e docs build-versioneddocs
+              CURBRANCH=${CIRCLE_TAG:-$CIRCLE_BRANCH} BUILDDIR="_build/unversioned" pixi run build-versioneddocs
             fi
       - save_cache:
           key: docs-v1-{{ .Branch }}-{{ .Revision }}
