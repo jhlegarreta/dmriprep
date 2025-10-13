@@ -393,7 +393,7 @@ jobs:
           command: mkdir -p $SUBJECTS_DIR
       - run:
           name: Install Graphviz
-          command: apt update && apt -y install graphviz
+          command: apt update && apt -y install graphviz git
       - run:
           name: Build only this commit
           command: SPHINXOPTS="-W" BUILDDIR="_build/unversioned" pixi run build-docs
