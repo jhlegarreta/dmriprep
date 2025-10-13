@@ -21,13 +21,21 @@ using the :py:func:`~dmriprep.config.load` function.
 
 Configuration sections
 ----------------------
+.. currentmodule:: dmriprep.config
+.. autoclass:: dmriprep.config._Config
+   :members:
+   :private-members:
 .. autoclass:: environment
+   :noindex:
    :members:
 .. autoclass:: execution
+   :noindex:
    :members:
 .. autoclass:: workflow
+   :noindex:
    :members:
 .. autoclass:: nipype
+   :noindex:
    :members:
 
 Usage
@@ -54,17 +62,18 @@ graph is built across processes.
 Logging
 -------
 .. autoclass:: loggers
+   :noindex:
    :members:
 
 Other responsibilities
 ----------------------
-The :py:mod:`config` is responsible for other convenience actions.
+The :py:mod:`~dmriprep.config` is responsible for other convenience actions.
 
-  * Switching Python's :obj:`multiprocessing` to *forkserver* mode.
+  * Switching Python's ``multiprocessing`` to *forkserver* mode.
   * Set up a filter for warnings as early as possible.
   * Automated I/O magic operations. Some conversions need to happen in the
     store/load processes (e.g., from/to :obj:`~pathlib.Path` \<-\> :obj:`str`,
-    :py:class:`~bids.layout.BIDSLayout`, etc.)
+    :obj:`~bids.layout.BIDSLayout`, etc.)
 
 """
 
