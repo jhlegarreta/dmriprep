@@ -34,8 +34,9 @@ a hard-limited memory-scope.
 
 def build_workflow(config_file, retval):
     """Create the Nipype Workflow that supports the whole execution graph."""
-    from niworkflows.utils.bids import collect_participants, check_pipeline_version
     from niworkflows.reports import generate_reports
+    from niworkflows.utils.bids import check_pipeline_version, collect_participants
+
     from .. import config
     from ..utils.misc import check_deps
     from ..workflows.base import init_dmriprep_wf
@@ -46,18 +47,16 @@ def build_workflow(config_file, retval):
     output_dir = config.execution.output_dir
     version = config.environment.version
 
-    retval["return_code"] = 1
-    retval["workflow"] = None
+    retval['return_code'] = 1
+    retval['workflow'] = None
 
     # warn if older results exist: check for dataset_description.json in output folder
-    msg = check_pipeline_version(
-        version, output_dir / "dmriprep" / "dataset_description.json"
-    )
+    msg = check_pipeline_version(version, output_dir / 'dmriprep' / 'dataset_description.json')
     if msg is not None:
         build_log.warning(msg)
 
     # Please note this is the input folder's dataset_description.json
-    dset_desc_path = config.execution.bids_dir / "dataset_description.json"
+    dset_desc_path = config.execution.bids_dir / 'dataset_description.json'
     if dset_desc_path.exists():
         from hashlib import sha256
 
@@ -74,14 +73,15 @@ def build_workflow(config_file, retval):
         from pkg_resources import resource_filename as pkgrf
 
         build_log.log(
-            25, f"Running --reports-only on participants {', '.join(subject_list)}",
+            25,
+            f"Running --reports-only on participants {', '.join(subject_list)}",
         )
-        retval["return_code"] = generate_reports(
+        retval['return_code'] = generate_reports(
             subject_list,
             config.execution.output_dir,
             config.execution.run_uuid,
-            config=pkgrf("dmriprep", "config/reports-spec.yml"),
-            packagename="dmriprep",
+            config=pkgrf('dmriprep', 'config/reports-spec.yml'),
+            packagename='dmriprep',
         )
         return retval
 
@@ -95,21 +95,21 @@ def build_workflow(config_file, retval):
     """
     build_log.log(25, INIT_MSG)
 
-    retval["workflow"] = init_dmriprep_wf()
+    retval['workflow'] = init_dmriprep_wf()
 
     # Check workflow for missing commands
-    missing = check_deps(retval["workflow"])
+    missing = check_deps(retval['workflow'])
     if missing:
-        deps_list = "\n".join([f"\t* {cmd} (Interface: {iface})" for iface, cmd in missing])
-        build_log.critical(f"Cannot run dMRIPrep. Missing dependencies:\n{deps_list}")
-        retval["return_code"] = 127  # 127 == command not found.
+        deps_list = '\n'.join([f'\t* {cmd} (Interface: {iface})' for iface, cmd in missing])
+        build_log.critical(f'Cannot run dMRIPrep. Missing dependencies:\n{deps_list}')
+        retval['return_code'] = 127  # 127 == command not found.
         return retval
 
     config.to_filename(config_file)
     build_log.info(
         f"dMRIPrep workflow graph with {len(retval['workflow']._get_all_nodes())} nodes built successfully."
     )
-    retval["return_code"] = 0
+    retval['return_code'] = 0
     return retval
 
 
@@ -118,10 +118,10 @@ def build_boilerplate(config_file, workflow):
     from .. import config
 
     config.load(config_file)
-    logs_path = config.execution.output_dir / "dmriprep" / "logs"
+    logs_path = config.execution.output_dir / 'dmriprep' / 'logs'
     boilerplate = workflow.visit_desc()
     citation_files = {
-        ext: logs_path / (f"CITATION.{[ext for ext in ('bib', 'tex', 'md', 'html')]}")
+        ext: logs_path / (f"CITATION.{['bib', 'tex', 'md', 'html']}")
     }
 
     if boilerplate:
@@ -134,56 +134,49 @@ def build_boilerplate(config_file, workflow):
             except FileNotFoundError:
                 pass
 
-    citation_files["md"].write_text(boilerplate)
+    citation_files['md'].write_text(boilerplate)
 
-    if not config.execution.md_only_boilerplate and citation_files["md"].exists():
-        from subprocess import check_call, CalledProcessError, TimeoutExpired
-        from pkg_resources import resource_filename as pkgrf
+    if not config.execution.md_only_boilerplate and citation_files['md'].exists():
         from shutil import copyfile
+        from subprocess import CalledProcessError, TimeoutExpired, check_call
+
+        from pkg_resources import resource_filename as pkgrf
 
         # Generate HTML file resolving citations
         cmd = [
-            "pandoc",
-            "-s",
-            "--bibliography",
-            pkgrf("dmriprep", "data/boilerplate.bib"),
-            "--citeproc",
-            "--metadata",
+            'pandoc',
+            '-s',
+            '--bibliography',
+            pkgrf('dmriprep', 'data/boilerplate.bib'),
+            '--citeproc',
+            '--metadata',
             'pagetitle="dMRIPrep citation boilerplate"',
-            str(citation_files["md"]),
-            "-o",
-            str(citation_files["html"]),
+            str(citation_files['md']),
+            '-o',
+            str(citation_files['html']),
         ]
 
-        config.loggers.cli.info(
-            "Generating an HTML version of the citation boilerplate..."
-        )
+        config.loggers.cli.info('Generating an HTML version of the citation boilerplate...')
         try:
             check_call(cmd, timeout=10)
         except (FileNotFoundError, CalledProcessError, TimeoutExpired):
-            config.loggers.cli.warning(
-                f"Could not generate CITATION.html file:\n{' '.join(cmd)}"
-            )
+            config.loggers.cli.warning(f"Could not generate CITATION.html file:\n{' '.join(cmd)}")
 
         # Generate LaTex file resolving citations
         cmd = [
-            "pandoc",
-            "-s",
-            "--bibliography",
-            pkgrf("dmriprep", "data/boilerplate.bib"),
-            "--natbib",
-            str(citation_files["md"]),
-            "-o",
-            str(citation_files["tex"]),
+            'pandoc',
+            '-s',
+            '--bibliography',
+            pkgrf('dmriprep', 'data/boilerplate.bib'),
+            '--natbib',
+            str(citation_files['md']),
+            '-o',
+            str(citation_files['tex']),
         ]
-        config.loggers.cli.info(
-            "Generating a LaTeX version of the citation boilerplate..."
-        )
+        config.loggers.cli.info('Generating a LaTeX version of the citation boilerplate...')
         try:
             check_call(cmd, timeout=10)
         except (FileNotFoundError, CalledProcessError, TimeoutExpired):
-            config.loggers.cli.warning(
-                f"Could not generate CITATION.tex file:\n{' '.join(cmd)}"
-            )
+            config.loggers.cli.warning(f"Could not generate CITATION.tex file:\n{' '.join(cmd)}")
         else:
-            copyfile(pkgrf("dmriprep", "data/boilerplate.bib"), citation_files["bib"])
+            copyfile(pkgrf('dmriprep', 'data/boilerplate.bib'), citation_files['bib'])

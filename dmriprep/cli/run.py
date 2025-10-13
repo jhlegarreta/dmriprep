@@ -22,36 +22,39 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """dMRI preprocessing workflow."""
+
 from .. import config
 
 
 def main():
     """Entry point."""
+    import gc
     import os
     import sys
-    import gc
-    from multiprocessing import Process, Manager
-    from .parser import parse_args
+    from multiprocessing import Manager, Process
+
     from ..utils.bids import write_derivative_description
+    from .parser import parse_args
 
     parse_args()
 
     popylar = None
     if not config.execution.notrack:
         import popylar
+
         from ..__about__ import __ga_id__
 
         config.loggers.cli.info(
-            "Your usage of dmriprep is being recorded using popylar (https://popylar.github.io/). ",  # noqa
-            "For details, see https://nipreps.github.io/dmriprep/usage.html. ",
-            "To opt out, call dmriprep with a `--notrack` flag",
+            'Your usage of dmriprep is being recorded using popylar (https://popylar.github.io/). ',
+            'For details, see https://nipreps.github.io/dmriprep/usage.html. ',
+            'To opt out, call dmriprep with a `--notrack` flag',
         )
-        popylar.track_event(__ga_id__, "run", "cli_run")
+        popylar.track_event(__ga_id__, 'run', 'cli_run')
 
     # CRITICAL Save the config to a file. This is necessary because the execution graph
     # is built as a separate process to keep the memory footprint low. The most
     # straightforward way to communicate with the child process is via the filesystem.
-    config_file = config.execution.work_dir / ".dmriprep.toml"
+    config_file = config.execution.work_dir / '.dmriprep.toml'
     config.to_filename(config_file)
 
     # CRITICAL Call build_workflow(config_file, retval) in a subprocess.
@@ -65,8 +68,8 @@ def main():
         p.start()
         p.join()
 
-        retcode = p.exitcode or retval.get("return_code", 0)
-        dmriprep_wf = retval.get("workflow", None)
+        retcode = p.exitcode or retval.get('return_code', 0)
+        dmriprep_wf = retval.get('workflow', None)
 
     # CRITICAL Load the config from the file. This is necessary because the ``build_workflow``
     # function executed constrained in a process may change the config (and thus the global
@@ -77,7 +80,7 @@ def main():
         sys.exit(int(retcode > 0))
 
     if dmriprep_wf and config.execution.write_graph:
-        dmriprep_wf.write_graph(graph2use="colored", format="svg", simple_form=True)
+        dmriprep_wf.write_graph(graph2use='colored', format='svg', simple_form=True)
 
     retcode = retcode or (dmriprep_wf is None) * os.EX_SOFTWARE
     if retcode != 0:
@@ -98,28 +101,26 @@ def main():
     gc.collect()
 
     if popylar is not None:
-        popylar.track_event(__ga_id__, "run", "started")
+        popylar.track_event(__ga_id__, 'run', 'started')
 
     config.loggers.workflow.log(
         15,
-        "\n".join(
-            ["dMRIPrep config:"] + [f"\t\t{s}" for s in config.dumps().splitlines()]
-        ),
+        '\n'.join(['dMRIPrep config:'] + [f'\t\t{s}' for s in config.dumps().splitlines()]),
     )
-    config.loggers.workflow.log(25, "dMRIPrep started!")
+    config.loggers.workflow.log(25, 'dMRIPrep started!')
     errno = 1  # Default is error exit unless otherwise set
     try:
         dmriprep_wf.run(**config.nipype.get_plugin())
     except Exception as e:
         if not config.execution.notrack:
-            popylar.track_event(__ga_id__, "run", "error")
-        config.loggers.workflow.critical(f"dMRIPrep failed: {e}")
+            popylar.track_event(__ga_id__, 'run', 'error')
+        config.loggers.workflow.critical(f'dMRIPrep failed: {e}')
         raise
     else:
-        config.loggers.workflow.log(25, "dMRIPrep finished successfully!")
+        config.loggers.workflow.log(25, 'dMRIPrep finished successfully!')
 
         # Bother users with the boilerplate only iff the workflow went okay.
-        if (config.execution.output_dir / "dmriprep" / "logs" / "CITATION.md").exists():
+        if (config.execution.output_dir / 'dmriprep' / 'logs' / 'CITATION.md').exists():
             config.loggers.workflow.log(
                 25,
                 "Works derived from this dMRIPrep execution should "
@@ -128,19 +129,17 @@ def main():
             )
 
         if config.workflow.run_reconall:
-            from templateflow import api
             from niworkflows.utils.misc import _copy_any
+            from templateflow import api
 
-            dseg_tsv = str(api.get("fsaverage", suffix="dseg", extension=[".tsv"]))
+            dseg_tsv = str(api.get('fsaverage', suffix='dseg', extension=['.tsv']))
             _copy_any(
                 dseg_tsv,
-                str(config.execution.output_dir / "dmriprep" / "desc-aseg_dseg.tsv"),
+                str(config.execution.output_dir / 'dmriprep' / 'desc-aseg_dseg.tsv'),
             )
             _copy_any(
                 dseg_tsv,
-                str(
-                    config.execution.output_dir / "dmriprep" / "desc-aparcaseg_dseg.tsv"
-                ),
+                str(config.execution.output_dir / 'dmriprep' / 'desc-aparcaseg_dseg.tsv'),
             )
         errno = 0
     finally:
@@ -152,20 +151,20 @@ def main():
             config.execution.participant_label,
             config.execution.output_dir,
             config.execution.run_uuid,
-            config=pkgrf("dmriprep", "config/reports-spec.yml"),
-            packagename="dmriprep",
+            config=pkgrf('dmriprep', 'config/reports-spec.yml'),
+            packagename='dmriprep',
         )
         write_derivative_description(
-            config.execution.bids_dir, config.execution.output_dir / "dmriprep"
+            config.execution.bids_dir, config.execution.output_dir / 'dmriprep'
         )
 
         if failed_reports and not config.execution.notrack:
-            popylar.track_event(__ga_id__, "run", "reporting_error")
+            popylar.track_event(__ga_id__, 'run', 'reporting_error')
         sys.exit(int((errno + failed_reports) > 0))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise RuntimeError(
-        "dmriprep/cli/run.py should not be run directly;\n"
-        "Please `pip install` dmriprep and use the `dmriprep` command"
+        'dmriprep/cli/run.py should not be run directly;\n'
+        'Please `pip install` dmriprep and use the `dmriprep` command'
     )

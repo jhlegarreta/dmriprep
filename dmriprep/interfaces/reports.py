@@ -25,19 +25,18 @@
 import os
 import time
 
-from nipype.interfaces.base import (
-    traits,
-    TraitedSpec,
-    BaseInterfaceInputSpec,
-    File,
-    Directory,
-    InputMultiObject,
-    Str,
-    isdefined,
-    SimpleInterface,
-)
 from nipype.interfaces import freesurfer as fs
-
+from nipype.interfaces.base import (
+    BaseInterfaceInputSpec,
+    Directory,
+    File,
+    InputMultiObject,
+    SimpleInterface,
+    Str,
+    TraitedSpec,
+    isdefined,
+    traits,
+)
 
 SUBJECT_TEMPLATE = """\
 \t<ul class="elem-desc">
@@ -60,7 +59,7 @@ ABOUT_TEMPLATE = """\t<ul>
 
 
 class SummaryOutputSpec(TraitedSpec):
-    out_report = File(exists=True, desc="HTML segment containing summary")
+    out_report = File(exists=True, desc='HTML segment containing summary')
 
 
 class SummaryInterface(SimpleInterface):
@@ -68,10 +67,10 @@ class SummaryInterface(SimpleInterface):
 
     def _run_interface(self, runtime):
         segment = self._generate_segment()
-        fname = os.path.join(runtime.cwd, "report.html")
-        with open(fname, "w") as fobj:
+        fname = os.path.join(runtime.cwd, 'report.html')
+        with open(fname, 'w') as fobj:
             fobj.write(segment)
-        self._results["out_report"] = fname
+        self._results['out_report'] = fname
         return runtime
 
     def _generate_segment(self):
@@ -79,22 +78,22 @@ class SummaryInterface(SimpleInterface):
 
 
 class SubjectSummaryInputSpec(BaseInterfaceInputSpec):
-    t1w = InputMultiObject(File(exists=True), desc="T1w structural images")
-    t2w = InputMultiObject(File(exists=True), desc="T2w structural images")
-    subjects_dir = Directory(desc="FreeSurfer subjects directory")
-    subject_id = Str(desc="Subject ID")
+    t1w = InputMultiObject(File(exists=True), desc='T1w structural images')
+    t2w = InputMultiObject(File(exists=True), desc='T2w structural images')
+    subjects_dir = Directory(desc='FreeSurfer subjects directory')
+    subject_id = Str(desc='Subject ID')
     dwi = InputMultiObject(
         traits.Either(File(exists=True), traits.List(File(exists=True))),
-        desc="DWI files",
+        desc='DWI files',
     )
-    std_spaces = traits.List(Str, desc="list of standard spaces")
-    nstd_spaces = traits.List(Str, desc="list of non-standard spaces")
+    std_spaces = traits.List(Str, desc='list of standard spaces')
+    nstd_spaces = traits.List(Str, desc='list of non-standard spaces')
 
 
 class SubjectSummaryOutputSpec(SummaryOutputSpec):
     # This exists to ensure that the summary is run prior to the first ReconAll
     # call, allowing a determination whether there is a pre-existing directory
-    subject_id = Str(desc="FreeSurfer subject ID")
+    subject_id = Str(desc='FreeSurfer subject ID')
 
 
 class SubjectSummary(SummaryInterface):
@@ -103,27 +102,27 @@ class SubjectSummary(SummaryInterface):
 
     def _run_interface(self, runtime):
         if isdefined(self.inputs.subject_id):
-            self._results["subject_id"] = self.inputs.subject_id
-        return super(SubjectSummary, self)._run_interface(runtime)
+            self._results['subject_id'] = self.inputs.subject_id
+        return super()._run_interface(runtime)
 
     def _generate_segment(self):
         if not isdefined(self.inputs.subjects_dir):
-            freesurfer_status = "Not run"
+            freesurfer_status = 'Not run'
         else:
             recon = fs.ReconAll(
                 subjects_dir=self.inputs.subjects_dir,
                 subject_id=self.inputs.subject_id,
                 T1_files=self.inputs.t1w,
-                flags="-noskullstrip",
+                flags='-noskullstrip',
             )
-            if recon.cmdline.startswith("echo"):
-                freesurfer_status = "Pre-existing directory"
+            if recon.cmdline.startswith('echo'):
+                freesurfer_status = 'Pre-existing directory'
             else:
-                freesurfer_status = "Run by dMRIPrep"
+                freesurfer_status = 'Run by dMRIPrep'
 
-        t2w_seg = ""
+        t2w_seg = ''
         if self.inputs.t2w:
-            t2w_seg = f"(+ {len(self.inputs.t2w)} T2-weighted)"
+            t2w_seg = f'(+ {len(self.inputs.t2w)} T2-weighted)'
 
         dwi_files = self.inputs.dwi if isdefined(self.inputs.dwi) else []
         dwi_files = [s[0] if isinstance(s, list) else s for s in dwi_files]
@@ -133,15 +132,15 @@ class SubjectSummary(SummaryInterface):
             n_t1s=len(self.inputs.t1w),
             t2w=t2w_seg,
             n_dwi=len(dwi_files),
-            std_spaces=", ".join(self.inputs.std_spaces),
-            nstd_spaces=", ".join(self.inputs.nstd_spaces),
+            std_spaces=', '.join(self.inputs.std_spaces),
+            nstd_spaces=', '.join(self.inputs.nstd_spaces),
             freesurfer_status=freesurfer_status,
         )
 
 
 class AboutSummaryInputSpec(BaseInterfaceInputSpec):
-    version = Str(desc="dMRIPrep version")
-    command = Str(desc="dMRIPrep command")
+    version = Str(desc='dMRIPrep version')
+    command = Str(desc='dMRIPrep command')
     # Date not included - update timestamp only if version or command changes
 
 
@@ -152,5 +151,5 @@ class AboutSummary(SummaryInterface):
         return ABOUT_TEMPLATE.format(
             version=self.inputs.version,
             command=self.inputs.command,
-            date=time.strftime("%Y-%m-%d %H:%M:%S %z"),
+            date=time.strftime('%Y-%m-%d %H:%M:%S %z'),
         )
