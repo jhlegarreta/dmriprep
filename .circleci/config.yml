@@ -387,13 +387,13 @@ jobs:
             - docs-v1-
           paths:
             - ./docs/_build/html
-      - checkout
       - run:
           name: Create subjects folder
           command: mkdir -p $SUBJECTS_DIR
       - run:
           name: Install Graphviz
           command: apt update && apt -y install graphviz git
+      - checkout
       - run:
           name: Build only this commit
           command: SPHINXOPTS="-W" BUILDDIR="_build/unversioned" pixi run build-docs

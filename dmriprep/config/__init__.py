@@ -110,6 +110,7 @@ finally:
     from niworkflows.utils.spaces import Reference as _Ref
     from niworkflows.utils.spaces import SpatialReferences as _SRs
     from templateflow import __version__ as _tf_ver
+    from templateflow.conf import TF_LAYOUT
 
     from .. import __version__
 
@@ -171,6 +172,10 @@ with suppress(Exception):
             if _oc_limit in ('0', 'n/a') and Path('/proc/sys/vm/overcommit_ratio').exists():
                 _oc_limit = f"{Path('/proc/sys/vm/overcommit_ratio').read_text().strip()}%"
 
+
+# Debug modes are names that influence the exposure of internal details to
+# the user, either through additional derivatives or increased verbosity
+DEBUG_MODES = ('fieldmaps', 'pdb')
 
 class _Config:
     """An abstract class forbidding instantiation."""
@@ -335,6 +340,8 @@ class execution(_Config):
 
     anat_derivatives = None
     """A path where anatomical derivatives are found to fast-track *sMRIPrep*."""
+    bids_database_dir = None
+    """Path to the directory containing SQLite database indices for the input BIDS dataset."""
     bids_dir = None
     """An existing path to the dataset, which must be BIDS-compliant."""
     bids_description_hash = None
@@ -343,8 +350,12 @@ class execution(_Config):
     """A dictionary of BIDS selection filters."""
     boilerplate_only = False
     """Only generate a boilerplate."""
-    debug = False
+    sloppy = False
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
+    debug = []
+    """Debug mode(s)."""
+    derivatives = {}
+    """Path(s) to search for pre-computed derivatives"""
     fs_license_file = _fs_license
     """An existing file containing a FreeSurfer license."""
     fs_subjects_dir = None
@@ -383,7 +394,9 @@ class execution(_Config):
 
     _paths = (
         'anat_derivatives',
+        'bids_database_dir',
         'bids_dir',
+        'derivatives',
         'fs_license_file',
         'fs_subjects_dir',
         'layout',
@@ -396,27 +409,74 @@ class execution(_Config):
     @classmethod
     def init(cls):
         """Create a new BIDS Layout accessible with :attr:`~execution.layout`."""
+        if cls.fs_license_file and Path(cls.fs_license_file).is_file():
+            os.environ['FS_LICENSE'] = str(cls.fs_license_file)
+
         if cls._layout is None:
             import re
 
             from bids.layout import BIDSLayout
+            from bids.layout.index import BIDSLayoutIndexer
 
-            work_dir = cls.work_dir / 'bids.db'
-            work_dir.mkdir(exist_ok=True, parents=True)
+            _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / 'bids_db')
+            _db_path.mkdir(exist_ok=True, parents=True)
+
+            # Recommended after PyBIDS 12.1
+            ignore_patterns = [
+                'code',
+                'stimuli',
+                'sourcedata',
+                'models',
+                re.compile(r'^\.'),
+                re.compile(r'sub-[a-zA-Z0-9]+(/ses-[a-zA-Z0-9]+)?/(beh|bold|eeg|ieeg|meg|perf)'),
+            ]
+            if cls.participant_label and cls.bids_database_dir is None:
+                # Ignore any subjects who aren't the requested ones.
+                # This is only done if the database is written out to a run-specific folder.
+                ignore_patterns.append(
+                    re.compile(r'sub-(?!(' + '|'.join(cls.participant_label) + r')(\b|_))')
+                )
+
+            _indexer = BIDSLayoutIndexer(
+                validate=False,
+                ignore=ignore_patterns,
+            )
             cls._layout = BIDSLayout(
                 str(cls.bids_dir),
-                validate=False,
-                # database_path=str(work_dir),
-                ignore=(
-                    'code',
-                    'stimuli',
-                    'sourcedata',
-                    'models',
-                    'derivatives',
-                    re.compile(r'^\.'),
-                ),
+                database_path=_db_path,
+                reset_database=cls.bids_database_dir is None,
+                indexer=_indexer,
             )
+            cls.bids_database_dir = _db_path
         cls.layout = cls._layout
+        if cls.bids_filters:
+            from bids.layout import Query
+
+            def _process_value(value):
+                """Convert string with "Query" in it to Query object."""
+                if isinstance(value, list):
+                    return [_process_value(val) for val in value]
+                else:
+                    return (
+                        getattr(Query, value[7:-4])
+                        if not isinstance(value, Query) and 'Query' in value
+                        else value
+                    )
+
+            # unserialize pybids Query enum values
+            for acq, filters in cls.bids_filters.items():
+                for k, v in filters.items():
+                    cls.bids_filters[acq][k] = _process_value(v)
+
+        dataset_links = {
+            'raw': cls.bids_dir,
+            'templateflow': Path(TF_LAYOUT.root),
+        }
+        dataset_links.update(cls.derivatives)
+        cls.dataset_links = dataset_links
+
+        if cls.debug and 'all' in cls.debug:
+            cls.debug = list(DEBUG_MODES)
 
 
 # These variables are not necessary anymore
