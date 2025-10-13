@@ -2938,8 +2938,8 @@ packages:
   requires_python: '>=3.6'
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev53+g528b7f3ab.d20251013
-  sha256: fb1d7cad04a25d2d09ee8da2268b1c94893e1aa627437d7e2288253719543f70
+  version: 25.0.0.dev59+g9a74b8bd4.d20251013
+  sha256: 7952cb4502fcd519f47dca91aaff7cf926570bdb7a6fc06a4b4a2aed7e021edb
   requires_dist:
   - dipy>=1.0.0
   - h5py
@@ -3022,8 +3022,8 @@ packages:
   editable: true
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev53+g528b7f3ab.d20251013
-  sha256: fb1d7cad04a25d2d09ee8da2268b1c94893e1aa627437d7e2288253719543f70
+  version: 25.0.0.dev59+g9a74b8bd4.d20251013
+  sha256: 7952cb4502fcd519f47dca91aaff7cf926570bdb7a6fc06a4b4a2aed7e021edb
   requires_dist:
   - dipy>=1.0.0
   - h5py

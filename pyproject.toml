@@ -291,6 +291,7 @@ dmriprep = { features = ["production", "container", "telemetry"], solve-group = 
 [tool.pixi.dependencies]
 dipy = ">=1.11.0,<2"
 hatch = ">=1.14.1,<2"
+python = ">=3.10"
 
 [tool.codespell]
 skip = ["boilerplate.bib"]
