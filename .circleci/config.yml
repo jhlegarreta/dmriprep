@@ -395,9 +395,6 @@ jobs:
           name: Install Graphviz
           command: apt update && apt -y install graphviz
       - run:
-          name: Install deps
-          command: pip install --no-cache-dir -r docs/requirements.txt
-      - run:
           name: Build only this commit
           command: SPHINXOPTS="-W" BUILDDIR="_build/unversioned" pixi run build-docs
       - store_artifacts:
