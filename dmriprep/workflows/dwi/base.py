@@ -21,6 +21,7 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """Orchestrating the dMRI-preprocessing workflow."""
+
 from ... import config
 from pathlib import Path
 from nipype.pipeline import engine as pe
@@ -103,22 +104,18 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
     layout = config.execution.layout
 
     dwi_file = Path(dwi_file)
-    config.loggers.workflow.debug(
-        f"Creating DWI preprocessing workflow for <{dwi_file.name}>"
-    )
+    config.loggers.workflow.debug(f'Creating DWI preprocessing workflow for <{dwi_file.name}>')
 
     if has_fieldmap:
         import re
         from sdcflows.fieldmaps import get_identifier
 
-        dwi_rel = re.sub(
-            r"^sub-[a-zA-Z0-9]*/", "", str(dwi_file.relative_to(layout.root))
-        )
+        dwi_rel = re.sub(r'^sub-[a-zA-Z0-9]*/', '', str(dwi_file.relative_to(layout.root)))
         estimator_key = get_identifier(dwi_rel)
         if not estimator_key:
             has_fieldmap = False
             config.loggers.workflow.critical(
-                f"None of the available B0 fieldmaps are associated to <{dwi_rel}>"
+                f'None of the available B0 fieldmaps are associated to <{dwi_rel}>'
             )
 
     # Build workflow
@@ -128,58 +125,56 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
         niu.IdentityInterface(
             fields=[
                 # DWI
-                "dwi_file",
-                "in_bvec",
-                "in_bval",
+                'dwi_file',
+                'in_bvec',
+                'in_bval',
                 # From SDCFlows
-                "fmap",
-                "fmap_ref",
-                "fmap_coeff",
-                "fmap_mask",
-                "fmap_id",
+                'fmap',
+                'fmap_ref',
+                'fmap_coeff',
+                'fmap_mask',
+                'fmap_id',
                 # From anatomical
-                "t1w_preproc",
-                "t1w_mask",
-                "t1w_dseg",
-                "t1w_aseg",
-                "t1w_aparc",
-                "t1w_tpms",
-                "template",
-                "anat2std_xfm",
-                "std2anat_xfm",
-                "subjects_dir",
-                "subject_id",
-                "t1w2fsnative_xfm",
-                "fsnative2t1w_xfm",
+                't1w_preproc',
+                't1w_mask',
+                't1w_dseg',
+                't1w_aseg',
+                't1w_aparc',
+                't1w_tpms',
+                'template',
+                'anat2std_xfm',
+                'std2anat_xfm',
+                'subjects_dir',
+                'subject_id',
+                't1w2fsnative_xfm',
+                'fsnative2t1w_xfm',
             ]
         ),
-        name="inputnode",
+        name='inputnode',
     )
     inputnode.inputs.dwi_file = str(dwi_file.absolute())
     inputnode.inputs.in_bvec = str(layout.get_bvec(dwi_file))
     inputnode.inputs.in_bval = str(layout.get_bval(dwi_file))
 
     outputnode = pe.Node(
-        niu.IdentityInterface(fields=["dwi_reference", "dwi_mask", "gradients_rasb"]),
-        name="outputnode",
+        niu.IdentityInterface(fields=['dwi_reference', 'dwi_mask', 'gradients_rasb']),
+        name='outputnode',
     )
 
-    gradient_table = pe.Node(CheckGradientTable(), name="gradient_table")
+    gradient_table = pe.Node(CheckGradientTable(), name='gradient_table')
 
     dwi_reference_wf = init_epi_reference_wf(
         omp_nthreads=config.nipype.omp_nthreads,
-        name="dwi_reference_wf",
+        name='dwi_reference_wf',
     )
 
     brainextraction_wf = init_brainextraction_wf()
-    dwi_derivatives_wf = init_dwi_derivatives_wf(
-        output_dir=str(config.execution.output_dir)
-    )
+    dwi_derivatives_wf = init_dwi_derivatives_wf(output_dir=str(config.execution.output_dir))
 
     # If has_fieldmaps this will hold the corrected reference, original otherwise
     buffernode = pe.Node(
-        niu.IdentityInterface(fields=["dwi_reference", "dwi_mask"]),
-        name="buffernode",
+        niu.IdentityInterface(fields=['dwi_reference', 'dwi_mask']),
+        name='buffernode',
     )
 
     # MAIN WORKFLOW STRUCTURE
@@ -209,7 +204,7 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
         from ...utils.misc import sub_prefix as _prefix
 
         # Mask the T1w
-        t1w_brain = pe.Node(ApplyMask(), name="t1w_brain")
+        t1w_brain = pe.Node(ApplyMask(), name='t1w_brain')
 
         bbr_wf = init_bbreg_wf(
             debug=config.execution.debug,
@@ -220,14 +215,14 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
         ds_report_reg = pe.Node(
             DerivativesDataSink(
                 base_directory=str(config.execution.output_dir),
-                datatype="figures",
+                datatype='figures',
             ),
-            name="ds_report_reg",
+            name='ds_report_reg',
             run_without_submitting=True,
         )
 
         def _bold_reg_suffix(fallback):
-            return "coreg" if fallback else "bbregister"
+            return 'coreg' if fallback else 'bbregister'
 
         # fmt: off
         workflow.connect([
@@ -248,7 +243,7 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
         ])
         # fmt: on
 
-    if "eddy" not in config.workflow.ignore:
+    if 'eddy' not in config.workflow.ignore:
         # Eddy distortion correction
         eddy_wf = init_eddy_wf(debug=config.execution.debug)
         eddy_wf.inputs.inputnode.metadata = layout.get_metadata(str(dwi_file))
@@ -256,19 +251,19 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
         ds_report_eddy = pe.Node(
             DerivativesDataSink(
                 base_directory=str(config.execution.output_dir),
-                desc="eddy",
-                datatype="figures",
+                desc='eddy',
+                datatype='figures',
             ),
-            name="ds_report_eddy",
+            name='ds_report_eddy',
             run_without_submitting=True,
         )
 
         eddy_report = pe.Node(
             SimpleBeforeAfter(
-                before_label="Distorted",
-                after_label="Eddy Corrected",
+                before_label='Distorted',
+                after_label='Eddy Corrected',
             ),
-            name="eddy_report",
+            name='eddy_report',
             mem_gb=0.1,
         )
 
@@ -329,8 +324,8 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
     unwarp_wf.inputs.inputnode.metadata = layout.get_metadata(str(dwi_file))
 
     output_select = pe.Node(
-        KeySelect(fields=["fmap", "fmap_ref", "fmap_coeff", "fmap_mask"]),
-        name="output_select",
+        KeySelect(fields=['fmap', 'fmap_ref', 'fmap_coeff', 'fmap_mask']),
+        name='output_select',
         run_without_submitting=True,
     )
     output_select.inputs.key = estimator_key[0]
@@ -342,10 +337,10 @@ def init_dwi_preproc_wf(dwi_file, has_fieldmap=False):
 
     sdc_report = pe.Node(
         SimpleBeforeAfter(
-            before_label="Distorted",
-            after_label="Corrected",
+            before_label='Distorted',
+            after_label='Corrected',
         ),
-        name="sdc_report",
+        name='sdc_report',
         mem_gb=0.1,
     )
 
@@ -392,8 +387,8 @@ def _get_wf_name(filename):
     """
     from pathlib import Path
 
-    fname = Path(filename).name.rpartition(".nii")[0].replace("_dwi", "_wf")
-    fname_nosub = "_".join(fname.split("_")[1:])
+    fname = Path(filename).name.rpartition('.nii')[0].replace('_dwi', '_wf')
+    fname_nosub = '_'.join(fname.split('_')[1:])
     return f"dwi_preproc_{fname_nosub.replace('.', '_').replace(' ', '').replace('-', '_')}"
 
 

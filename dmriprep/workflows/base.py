@@ -21,6 +21,7 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """dMRIPrep base processing workflows."""
+
 from .. import config
 import sys
 import os
@@ -59,7 +60,7 @@ def init_dmriprep_wf():
                 wf = init_dmriprep_wf()
 
     """
-    dmriprep_wf = Workflow(name="dmriprep_wf")
+    dmriprep_wf = Workflow(name='dmriprep_wf')
     dmriprep_wf.base_dir = config.execution.work_dir
 
     freesurfer = config.workflow.run_reconall
@@ -67,7 +68,7 @@ def init_dmriprep_wf():
         fsdir = pe.Node(
             BIDSFreeSurferDir(
                 derivatives=config.execution.output_dir,
-                freesurfer_home=os.getenv("FREESURFER_HOME"),
+                freesurfer_home=os.getenv('FREESURFER_HOME'),
                 spaces=config.workflow.spaces.get_fs_spaces(),
             ),
             name=f"fsdir_run_{config.execution.run_uuid.replace('-', '_')}",
@@ -79,11 +80,11 @@ def init_dmriprep_wf():
     for subject_id in config.execution.participant_label:
         single_subject_wf = init_single_subject_wf(subject_id)
 
-        single_subject_wf.config["execution"]["crashdump_dir"] = str(
+        single_subject_wf.config['execution']['crashdump_dir'] = str(
             config.execution.output_dir
-            / "dmriprep"
-            / f"sub-{subject_id}"
-            / "log"
+            / 'dmriprep'
+            / f'sub-{subject_id}'
+            / 'log'
             / config.execution.run_uuid
         )
 
@@ -91,7 +92,7 @@ def init_dmriprep_wf():
             node.config = deepcopy(single_subject_wf.config)
         if freesurfer:
             dmriprep_wf.connect(
-                fsdir, "subjects_dir", single_subject_wf, "fsinputnode.subjects_dir"
+                fsdir, 'subjects_dir', single_subject_wf, 'fsinputnode.subjects_dir'
             )
         else:
             dmriprep_wf.add_nodes([single_subject_wf])
@@ -99,13 +100,13 @@ def init_dmriprep_wf():
         # Dump a copy of the config file into the log directory
         log_dir = (
             config.execution.output_dir
-            / "dmriprep"
-            / f"sub-{subject_id}"
-            / "log"
+            / 'dmriprep'
+            / f'sub-{subject_id}'
+            / 'log'
             / config.execution.run_uuid
         )
         log_dir.mkdir(exist_ok=True, parents=True)
-        config.to_filename(log_dir / "dmriprep.toml")
+        config.to_filename(log_dir / 'dmriprep.toml')
 
     return dmriprep_wf
 
@@ -147,27 +148,26 @@ def init_single_subject_wf(subject_id):
     """
     from ..utils.misc import sub_prefix as _prefix
 
-    name = f"single_subject_{subject_id}_wf"
+    name = f'single_subject_{subject_id}_wf'
     subject_data = collect_data(config.execution.layout, subject_id)[0]
 
-    if "flair" in config.workflow.ignore:
-        subject_data["flair"] = []
-    if "t2w" in config.workflow.ignore:
-        subject_data["t2w"] = []
+    if 'flair' in config.workflow.ignore:
+        subject_data['flair'] = []
+    if 't2w' in config.workflow.ignore:
+        subject_data['t2w'] = []
 
     anat_only = config.workflow.anat_only
 
     # Make sure we always go through these two checks
-    if not anat_only and not subject_data["dwi"]:
+    if not anat_only and not subject_data['dwi']:
         raise Exception(
-            f"No DWI data found for participant {subject_id}. "
-            "All workflows require DWI images."
+            f'No DWI data found for participant {subject_id}. ' 'All workflows require DWI images.'
         )
 
-    if not subject_data["t1w"]:
+    if not subject_data['t1w']:
         raise Exception(
-            f"No T1w images found for participant {subject_id}. "
-            "All workflows require T1w images."
+            f'No T1w images found for participant {subject_id}. '
+            'All workflows require T1w images.'
         )
 
     workflow = Workflow(name=name)
@@ -201,17 +201,15 @@ It is released under the [CC0]\
     spaces = config.workflow.spaces
     output_dir = config.execution.output_dir
 
-    fsinputnode = pe.Node(
-        niu.IdentityInterface(fields=["subjects_dir"]), name="fsinputnode"
-    )
+    fsinputnode = pe.Node(niu.IdentityInterface(fields=['subjects_dir']), name='fsinputnode')
 
     bidssrc = pe.Node(
-        BIDSDataGrabber(subject_data=subject_data, anat_only=anat_only), name="bidssrc"
+        BIDSDataGrabber(subject_data=subject_data, anat_only=anat_only), name='bidssrc'
     )
 
     bids_info = pe.Node(
         BIDSInfo(bids_dir=config.execution.bids_dir, bids_validate=False),
-        name="bids_info",
+        name='bids_info',
     )
 
     summary = pe.Node(
@@ -219,29 +217,25 @@ It is released under the [CC0]\
             std_spaces=spaces.get_spaces(nonstandard=False),
             nstd_spaces=spaces.get_spaces(standard=False),
         ),
-        name="summary",
+        name='summary',
         run_without_submitting=True,
     )
 
     about = pe.Node(
-        AboutSummary(version=config.environment.version, command=" ".join(sys.argv)),
-        name="about",
+        AboutSummary(version=config.environment.version, command=' '.join(sys.argv)),
+        name='about',
         run_without_submitting=True,
     )
 
     ds_report_summary = pe.Node(
-        DerivativesDataSink(
-            base_directory=str(output_dir), desc="summary", datatype="figures"
-        ),
-        name="ds_report_summary",
+        DerivativesDataSink(base_directory=str(output_dir), desc='summary', datatype='figures'),
+        name='ds_report_summary',
         run_without_submitting=True,
     )
 
     ds_report_about = pe.Node(
-        DerivativesDataSink(
-            base_directory=str(output_dir), desc="about", datatype="figures"
-        ),
-        name="ds_report_about",
+        DerivativesDataSink(base_directory=str(output_dir), desc='about', datatype='figures'),
+        name='ds_report_about',
         run_without_submitting=True,
     )
 
@@ -268,14 +262,12 @@ It is released under the [CC0]\
         omp_nthreads=config.nipype.omp_nthreads,
         output_dir=str(output_dir),
         skull_strip_fixed_seed=config.workflow.skull_strip_fixed_seed,
-        skull_strip_mode="force",
-        skull_strip_template=Reference.from_string(
-            config.workflow.skull_strip_template
-        )[0],
+        skull_strip_mode='force',
+        skull_strip_template=Reference.from_string(config.workflow.skull_strip_template)[0],
         spaces=spaces,
-        t1w=subject_data["t1w"],
+        t1w=subject_data['t1w'],
     )
-    anat_preproc_wf.__desc__ = f"\n\n{anat_preproc_wf.__desc__}"
+    anat_preproc_wf.__desc__ = f'\n\n{anat_preproc_wf.__desc__}'
 
     # fmt:off
     workflow.connect([

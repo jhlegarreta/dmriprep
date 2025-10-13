@@ -1,6 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """Custom Nipype interfaces for dMRIPrep."""
+
 from nipype.interfaces.base import OutputMultiObject, SimpleInterface
 from niworkflows.interfaces.bids import (
     DerivativesDataSink as _DDS,
@@ -13,11 +14,11 @@ from niworkflows.interfaces.bids import (
 class DerivativesDataSink(_DDS):
     """A patched DataSink."""
 
-    out_path_base = "dmriprep"
+    out_path_base = 'dmriprep'
 
 
 class BIDSDataGrabberOutputSpec(_BIDSDataGrabberOutputSpec):
-    dwi = OutputMultiObject(desc="output DWI images")
+    dwi = OutputMultiObject(desc='output DWI images')
 
 
 class BIDSDataGrabber(SimpleInterface):
@@ -26,7 +27,7 @@ class BIDSDataGrabber(SimpleInterface):
     _require_dwis = True
 
     def __init__(self, *args, **kwargs):
-        anat_only = kwargs.pop("anat_only", False)
+        anat_only = kwargs.pop('anat_only', False)
         super(BIDSDataGrabber, self).__init__(*args, **kwargs)
         if anat_only is not None:
             self._require_dwis = not anat_only
@@ -34,23 +35,21 @@ class BIDSDataGrabber(SimpleInterface):
     def _run_interface(self, runtime):
         bids_dict = self.inputs.subject_data
 
-        self._results["out_dict"] = bids_dict
+        self._results['out_dict'] = bids_dict
         self._results.update(bids_dict)
 
-        if not bids_dict["t1w"]:
+        if not bids_dict['t1w']:
             raise FileNotFoundError(
-                f"No T1w images found for subject sub-{self.inputs.subject_id}"
+                f'No T1w images found for subject sub-{self.inputs.subject_id}'
             )
 
-        if self._require_dwis and not bids_dict["dwi"]:
+        if self._require_dwis and not bids_dict['dwi']:
             raise FileNotFoundError(
-                f"No diffusion weighted images found for subject sub-{self.inputs.subject_id}"
+                f'No diffusion weighted images found for subject sub-{self.inputs.subject_id}'
             )
 
-        for imtype in ["dwi", "t2w", "flair", "fmap", "roi"]:
+        for imtype in ['dwi', 't2w', 'flair', 'fmap', 'roi']:
             if not bids_dict[imtype]:
-                _LOGGER.warning(
-                    f'No "{imtype}" images found for sub-{self.inputs.subject_id}'
-                )
+                _LOGGER.warning(f'No "{imtype}" images found for sub-{self.inputs.subject_id}')
 
         return runtime

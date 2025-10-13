@@ -30,6 +30,7 @@ Eddy-currents and head-motion estimation/correction.
     ...     tmpdir.join('dwi.nii.gz').strpath)
 
 """
+
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
@@ -58,17 +59,17 @@ def gen_eddy_textfiles(in_file, in_meta, newpath=None):
     from nipype.utils.filemanip import fname_presuffix
 
     # Generate output file name
-    newpath = Path(newpath or ".")
+    newpath = Path(newpath or '.')
     out_acqparams = fname_presuffix(
         in_file,
-        suffix="_acqparams.txt",
+        suffix='_acqparams.txt',
         use_ext=False,
         newpath=str(newpath.absolute()),
     )
 
-    pe_dir = in_meta["PhaseEncodingDirection"]
-    fsl_pe = ["0"] * 3
-    fsl_pe["ijk".index(pe_dir[0])] = "-1" if pe_dir.endswith("-") else "1"
+    pe_dir = in_meta['PhaseEncodingDirection']
+    fsl_pe = ['0'] * 3
+    fsl_pe['ijk'.index(pe_dir[0])] = '-1' if pe_dir.endswith('-') else '1'
 
     # Write to the acqp file
     try:
@@ -80,7 +81,7 @@ def gen_eddy_textfiles(in_file, in_meta, newpath=None):
 
     out_index = fname_presuffix(
         in_file,
-        suffix="_index.txt",
+        suffix='_index.txt',
         use_ext=False,
         newpath=str(newpath.absolute()),
     )
@@ -88,7 +89,7 @@ def gen_eddy_textfiles(in_file, in_meta, newpath=None):
     return out_acqparams, out_index
 
 
-def init_eddy_wf(debug=False, name="eddy_wf"):
+def init_eddy_wf(debug=False, name='eddy_wf'):
     """
     Create a workflow for head-motion & Eddy currents distortion estimation with FSL.
 
@@ -111,17 +112,13 @@ def init_eddy_wf(debug=False, name="eddy_wf"):
     from nipype.interfaces.fsl import Eddy, ExtractROI
 
     inputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=["dwi_file", "metadata", "dwi_mask", "in_bvec", "in_bval"]
-        ),
-        name="inputnode",
+        niu.IdentityInterface(fields=['dwi_file', 'metadata', 'dwi_mask', 'in_bvec', 'in_bval']),
+        name='inputnode',
     )
 
     outputnode = pe.Node(
-        niu.IdentityInterface(
-            fields=["out_rotated_bvecs", "eddy_ref_image", "out_eddy"]
-        ),
-        name="outputnode",
+        niu.IdentityInterface(fields=['out_rotated_bvecs', 'eddy_ref_image', 'out_eddy']),
+        name='outputnode',
     )
 
     workflow = Workflow(name=name)
@@ -132,7 +129,7 @@ included in FSL {Eddy().version} [@eddy].
 """
     eddy = pe.Node(
         Eddy(),
-        name="eddy",
+        name='eddy',
     )
 
     if debug:
@@ -144,14 +141,14 @@ included in FSL {Eddy().version} [@eddy].
     # Generate the acqp and index files for eddy
     gen_eddy_files = pe.Node(
         niu.Function(
-            input_names=["in_file", "in_meta"],
-            output_names=["out_acqparams", "out_index"],
+            input_names=['in_file', 'in_meta'],
+            output_names=['out_acqparams', 'out_index'],
             function=gen_eddy_textfiles,
         ),
-        name="gen_eddy_files",
+        name='gen_eddy_files',
     )
 
-    eddy_ref_img = pe.Node(ExtractROI(t_min=0, t_size=1), name="eddy_roi")
+    eddy_ref_img = pe.Node(ExtractROI(t_min=0, t_size=1), name='eddy_roi')
 
     # fmt:off
     workflow.connect([
