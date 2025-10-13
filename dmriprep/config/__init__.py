@@ -475,7 +475,7 @@ class execution(_Config):
         dataset_links.update(cls.derivatives)
         cls.dataset_links = dataset_links
 
-        if 'all' in cls.debug:
+        if cls.debug and 'all' in cls.debug:
             cls.debug = list(DEBUG_MODES)
 
 
