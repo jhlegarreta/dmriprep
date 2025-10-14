@@ -179,8 +179,6 @@ def init_single_subject_wf(
     from dmriprep.interfaces.bids import BIDSSourceFile, CreateFreeSurferID
     from dmriprep.workflows.dwi.base import init_dwi_wf
 
-    # from ..utils.misc import sub_prefix as _prefix
-
     if name is None:
         name = f'sub_{subject_id}_wf'
 

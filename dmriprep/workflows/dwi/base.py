@@ -32,30 +32,25 @@ from ... import config
 from ...interfaces import DerivativesDataSink
 
 
-def init_dwi_wf(dwi_file, has_fieldmap=False):
+def init_dwi_wf(
+    *,
+    dwi_series: list[str],
+    precomputed: dict | None = None,
+    fieldmap_id: str | None = None,
+    jacobian: bool = False,
+) -> pe.Workflow:
     """
     Build a preprocessing workflow for one DWI run.
 
-    Workflow Graph
-        .. workflow::
-            :graph2use: orig
-            :simple_form: yes
-
-            from dmriprep.config.testing import mock_config
-            from dmriprep import config
-            from dmriprep.workflows.dwi.base import init_dwi_wf
-            with mock_config():
-                wf = init_dwi_wf(
-                    f"{config.execution.layout.root}/"
-                    "sub-THP0005/dwi/sub-THP0005_dwi.nii.gz"
-                )
-
     Parameters
     ----------
-    dwi_file : :obj:`os.PathLike`
-        One diffusion MRI dataset to be processed.
-    has_fieldmap : :obj:`bool`
-        Build the workflow with a path to register a fieldmap to the DWI.
+    bold_series
+        List of paths to NIfTI files.
+    precomputed
+        Dictionary containing precomputed derivatives to reuse, if possible.
+    fieldmap_id
+        ID of the fieldmap to use to correct this DWI series. If :obj:`None`,
+        no correction will be applied.
 
     Inputs
     ------
@@ -101,6 +96,8 @@ def init_dwi_wf(dwi_file, has_fieldmap=False):
     from ...interfaces.vectors import CheckGradientTable
     from .eddy import init_eddy_wf
     from .outputs import init_dwi_derivatives_wf, init_reportlets_wf
+
+    return Workflow("name")
 
     layout = config.execution.layout
 
@@ -204,8 +201,6 @@ def init_dwi_wf(dwi_file, has_fieldmap=False):
         from niworkflows.anat.coregistration import init_bbreg_wf
         from niworkflows.interfaces.nibabel import ApplyMask
 
-        from ...utils.misc import sub_prefix as _prefix
-
         # Mask the T1w
         t1w_brain = pe.Node(ApplyMask(), name='t1w_brain')
 
@@ -231,7 +226,8 @@ def init_dwi_wf(dwi_file, has_fieldmap=False):
         workflow.connect([
             (inputnode, bbr_wf, [
                 ('fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
-                (('subject_id', _prefix), 'inputnode.subject_id'),
+                (('subject_id',
+                  lambda label: label.removeprefix("sub-")), 'inputnode.subject_id'),
                 ('subjects_dir', 'inputnode.subjects_dir'),
             ]),
             # T1w Mask

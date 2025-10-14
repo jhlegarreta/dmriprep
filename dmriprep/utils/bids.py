@@ -1,7 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 #
-# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+# Copyright The NiPreps Developers <nipreps@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ from pathlib import Path
 from bids.layout import BIDSLayout
 from bids.utils import listify
 
+from dmriprep.data import load as load_data
 
 @cache
 def _get_layout(derivatives_dir: Path) -> BIDSLayout:
@@ -52,28 +53,26 @@ def collect_derivatives(
     spec: dict | None = None,
     patterns: list[str] | None = None,
 ):
-    """Gather existing derivatives for diffusion preprocessing."""
+    """Gather existing derivatives and compose a cache."""
+    if spec is None or patterns is None:
+        _spec, _patterns = tuple(
+            json.loads(load_data.readable('io_spec.json').read_text()).values()
+        )
 
-    if patterns is not None:
-        del patterns
+        if spec is None:
+            spec = _spec
+        if patterns is None:
+            patterns = _patterns
 
-    if spec is None:
-        spec = {
-            'baseline': {
-                'dwi_ref': {'suffix': 'epiref', 'datatype': 'dwi'},
-                'dwi_mask': {'suffix': 'mask', 'datatype': 'dwi', 'desc': 'brain'},
-            },
-            'transforms': {},
-        }
+    derivs_cache = defaultdict(list, {})
+    layout = _get_layout(derivatives_dir)
 
-    derivs_cache: dict[str, list | str | dict] = {}
-    layout = _get_layout(Path(derivatives_dir))
-
+    # search for both dwirefs
     for key, query in spec['baseline'].items():
         item = layout.get(return_type='filename', **{**entities, **query})
         if not item:
             continue
-        derivs_cache[key] = item[0] if len(item) == 1 else item
+        derivs_cache[f'{key}_dwiref'] = item[0] if len(item) == 1 else item
 
     transforms_cache: dict[str, list | str] = {}
     for name, query in spec.get('transforms', {}).items():
@@ -84,14 +83,26 @@ def collect_derivatives(
             continue
         transforms_cache[name] = item[0] if len(item) == 1 else item
 
-    if transforms_cache:
-        derivs_cache['transforms'] = transforms_cache
-
+    derivs_cache['transforms'] = transforms_cache
     return derivs_cache
 
 
 def extract_entities(file_list):
-    """Return a dictionary of common entities for a collection of files."""
+    """
+    Return a dictionary of common entities given a list of files.
+
+    Examples
+    --------
+    >>> extract_entities("sub-01/anat/sub-01_T1w.nii.gz")
+    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+    >>> extract_entities(["sub-01/anat/sub-01_T1w.nii.gz"] * 2)
+    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+    >>> extract_entities(["sub-01/anat/sub-01_run-1_T1w.nii.gz",
+    ...                   "sub-01/anat/sub-01_run-2_T1w.nii.gz"])
+    {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+
+    """
+    from collections import defaultdict
 
     from bids.layout import parse_file_entities
 

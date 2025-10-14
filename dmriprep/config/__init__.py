@@ -99,6 +99,7 @@ finally:
     # ignoring the most annoying warnings
     import logging
     import os
+    import random
     import sys
     from contextlib import suppress
     from pathlib import Path
@@ -187,15 +188,26 @@ class _Config:
         raise RuntimeError('Configuration type is not instantiable.')
 
     @classmethod
-    def load(cls, settings, init=True):
+    def load(cls, settings, init=True, ignore=None):
         """Store settings from a dictionary."""
+        ignore = ignore or {}
         for k, v in settings.items():
-            if v is None:
+            if k in ignore or v is None:
                 continue
             if k in cls._paths:
-                setattr(cls, k, Path(v).absolute())
-                continue
-            if hasattr(cls, k):
+                if isinstance(v, list | tuple):
+                    setattr(cls, k, [Path(val).absolute() for val in v])
+                elif isinstance(v, dict):
+                    setattr(cls, k, {key: Path(val).absolute() for key, val in v.items()})
+                else:
+                    setattr(cls, k, Path(v).absolute())
+            elif hasattr(cls, k):
+                match k:
+                    # Handle special deserializations
+                    case 'processing_groups':
+                        v = _deserialize_pg(v)
+                    case _:
+                        pass
                 setattr(cls, k, v)
 
         if init:
@@ -407,6 +419,7 @@ class execution(_Config):
         'bids_database_dir',
         'bids_dir',
         'derivatives',
+        'dmriprep_dir',
         'fs_license_file',
         'fs_subjects_dir',
         'layout',
@@ -517,6 +530,8 @@ class workflow(_Config):
     """Remove the mean from fieldmaps."""
     force = None
     """Force particular steps for *dMRIPrep*."""
+    fs_no_resume = None
+    """Adjust pipeline to reuse base template of existing longitudinal *FreeSurfer*."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     ignore = None
@@ -591,24 +606,97 @@ class loggers:
         )
 
 
-def from_dict(settings):
-    """Read settings from a flat dictionary."""
-    nipype.load(settings)
-    execution.load(settings)
-    workflow.load(settings)
+class seeds(_Config):
+    """Initialize the PRNG and track random seed assignments"""
+
+    _random_seed = None
+    master = None
+    """Master random seed to initialize the Pseudorandom Number Generator (PRNG)"""
+    ants = None
+    """Seed used for antsRegistration, antsAI, antsMotionCorr"""
+    numpy = None
+    """Seed used by NumPy"""
+
+    @classmethod
+    def init(cls):
+        if cls._random_seed is not None:
+            cls.master = cls._random_seed
+        if cls.master is None:
+            cls.master = random.randint(1, 65536)
+        random.seed(cls.master)  # initialize the PRNG
+        # functions to set program specific seeds
+        cls.ants = _set_ants_seed()
+        cls.numpy = _set_numpy_seed()
+
+
+def _set_ants_seed():
+    """Fix random seed for antsRegistration, antsAI, antsMotionCorr"""
+    val = random.randint(1, 65536)
+    os.environ['ANTS_RANDOM_SEED'] = str(val)
+    return val
+
+
+def _set_numpy_seed():
+    """NumPy's random seed is independent from Python's `random` module"""
+    import numpy as np
+
+    val = random.randint(1, 65536)
+    np.random.seed(val)
+    return val
+
+
+def from_dict(settings, init=True, ignore=None):
+    """Read settings from a flat dictionary.
+
+    Arguments
+    ---------
+    setting : dict
+        Settings to apply to any configuration
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    ignore : :py:class:`~collections.abc.Container`
+        Collection of keys in ``setting`` to ignore
+    """
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
+
+    nipype.load(settings, init=initialize('nipype'), ignore=ignore)
+    execution.load(settings, init=initialize('execution'), ignore=ignore)
+    workflow.load(settings, init=initialize('workflow'), ignore=ignore)
+    seeds.load(settings, init=initialize('seeds'), ignore=ignore)
+
     loggers.init()
 
 
-def load(filename):
-    """Load settings from file."""
+def load(filename, skip=None, init=True):
+    """Load settings from file.
+
+    Arguments
+    ---------
+    filename : :py:class:`os.PathLike`
+        TOML file containing dMRIPrep configuration.
+    skip : dict or None
+        Sets of values to ignore during load, keyed by section name
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    """
     from toml import loads
+
+    skip = skip or {}
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
 
     filename = Path(filename)
     settings = loads(filename.read_text())
     for sectionname, configs in settings.items():
         if sectionname != 'environment':
             section = getattr(sys.modules[__name__], sectionname)
-            section.load(configs)
+            ignore = skip.get(sectionname)
+            section.load(configs, ignore=ignore, init=initialize(sectionname))
     init_spaces()
 
 
@@ -630,11 +718,16 @@ def get(flat=False):
     }
 
 
-def dumps(flat=False):
+def dumps():
     """Format config into toml."""
     from toml import dumps
 
-    return dumps(get(flat=flat))
+    settings = get()
+    # Serialize to play nice with TOML
+    if pg := settings['execution'].get('processing_groups'):
+        settings['execution']['processing_groups'] = _serialize_pg(pg)
+
+    return dumps(settings)
 
 
 def to_filename(filename):
@@ -658,3 +751,50 @@ def init_spaces(checkpoint=True):
 
     # Make the SpatialReferences object available
     workflow.spaces = spaces
+
+
+def _serialize_pg(value: list[tuple[str, str | list[str] | None]]) -> list[str]:
+    """
+    Serialize a list of participant-session tuples to be TOML-compatible.
+
+    Examples
+    --------
+    >>> _serialize_pg([('01', 'pre'), ('01', ['post'])])
+    ['sub-01_ses-pre', 'sub-01_ses-post']
+    >>> _serialize_pg([('01', ['pre', 'post']), ('02', ['post'])])
+    ['sub-01_ses-pre,post', 'sub-02_ses-post']
+    >>> _serialize_pg([('01', None), ('02', ['pre'])])
+    ['sub-01', 'sub-02_ses-pre']
+    """
+    serial = []
+    for sub, ses in value:
+        if ses is None:
+            serial.append(f'sub-{sub}')
+            continue
+        if isinstance(ses, str):
+            ses = [ses]
+        serial.append(f'sub-{sub}_ses-{",".join(ses)}')
+    return serial
+
+
+def _deserialize_pg(value: list[str]) -> list[tuple[str, list[str] | None]]:
+    """
+    Deserialize a list of participant-session tuples to be TOML-compatible.
+
+    Examples
+    --------
+    >>> _deserialize_pg(['sub-01_ses-pre', 'sub-01_ses-post'])
+    [('01', ['pre']), ('01', ['post'])]
+    >>> _deserialize_pg(['sub-01_ses-pre,post', 'sub-02_ses-post'])
+    [('01', ['pre', 'post']), ('02', ['post'])]
+    >>> _deserialize_pg(['sub-01', 'sub-02_ses-pre'])
+    [('01', None), ('02', ['pre'])]
+    """
+    deserial = []
+    for val in value:
+        sub, _, ses = val.partition('_')
+        sub = sub.removeprefix('sub-')
+        if ses:
+            ses = ses.removeprefix('ses-').split(',')
+        deserial.append((sub, ses or None))
+    return deserial
