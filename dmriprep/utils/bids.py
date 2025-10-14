@@ -37,6 +37,7 @@ from bids.utils import listify
 
 from dmriprep.data import load as load_data
 
+
 @cache
 def _get_layout(derivatives_dir: Path) -> BIDSLayout:
     import niworkflows.data
@@ -157,7 +158,7 @@ def write_derivative_description(bids_dir, deriv_dir):
             orig_desc = json.load(fobj)
 
     if 'DatasetDOI' in orig_desc:
-        desc['SourceDatasetsURLs'] = [f"https://doi.org/{orig_desc['DatasetDOI']}"]
+        desc['SourceDatasetsURLs'] = [f'https://doi.org/{orig_desc["DatasetDOI"]}']
     if 'License' in orig_desc:
         desc['License'] = orig_desc['License']
 
@@ -246,7 +247,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label, need_T1w=True):
         temp.write(json.dumps(validator_config_dict))
         temp.flush()
         try:
-            subprocess.check_call(['bids-validator', bids_dir, '-c', temp.name])
+            subprocess.check_call(['bids-validator', bids_dir, '-c', temp.name])  # noqa: S607
         except FileNotFoundError:
             print('bids-validator does not appear to be installed', file=sys.stderr)
 
