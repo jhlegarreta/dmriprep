@@ -361,8 +361,8 @@ jobs:
           name: Create subjects folder
           command: mkdir -p $SUBJECTS_DIR
       - run:
-          name: Install Graphviz
-          command: apt update && apt -y install graphviz git
+          name: Install Git
+          command: apt update && apt -y install git
       - checkout
       - run:
           name: Build documentation
