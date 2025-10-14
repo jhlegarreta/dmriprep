@@ -258,12 +258,3 @@ intersphinx_mapping = {
     'templateflow': ('https://www.templateflow.org/python-client', None),
 }
 
-# -- Options for versioning extension ----------------------------------------
-scv_show_banner = True
-scv_whitelist_branches = ('master', re.compile(r'^docs\/.*$'), 'test_docs')
-scv_whitelist_tags = (
-    re.compile(r'^\d{2,}\..*$'),
-    re.compile(r'^[1-9]\..*$'),
-    re.compile(r'^0\.\d{2,}\..*$'),
-    re.compile(r'^0\.[2-9]\..*$'),
-)
