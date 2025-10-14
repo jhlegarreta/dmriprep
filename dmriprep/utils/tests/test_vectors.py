@@ -63,16 +63,12 @@ def test_corruption(tmpdir, dipy_test_data, monkeypatch):
     # Perform various corruption checks using synthetic corrupted bval-bvec.
     dgt = v.DiffusionGradientTable()
     dgt.bvecs = bvecs
-    with pytest.raises(
-        ValueError, match='The number of b-vectors and b-values do not match'
-    ):
+    with pytest.raises(ValueError, match='The number of b-vectors and b-values do not match'):
         dgt.bvals = bvals[:-1]
 
     dgt = v.DiffusionGradientTable()
     dgt.bvals = bvals
-    with pytest.raises(
-        ValueError, match='The number of b-vectors and b-values do not match'
-    ):
+    with pytest.raises(ValueError, match='The number of b-vectors and b-values do not match'):
         dgt.bvecs = bvecs[:-1]
 
     # Missing b0
