@@ -250,7 +250,7 @@ jobs:
 
   get_data:
     docker:
-      - image: continuumio/miniconda3:master-alpine
+      - image: mambaorg/micromamba:alpine3.19
     working_directory: /tmp/data
     environment:
       - TEMPLATEFLOW_HOME: /tmp/templateflow
@@ -263,24 +263,24 @@ jobs:
       - run:
           name: Setup git-annex & DataLad
           command: |
-            conda install -y -c anaconda -c conda-forge git git-annex datalad
-            python -m pip install --no-cache-dir -U datalad-osf
-            git config --global user.name 'NiPreps Bot'
-            git config --global user.email 'nipreps@gmail.com'
+            micromamba install -y -c anaconda -c conda-forge git git-annex datalad
+            micromamba run pip install --no-cache-dir -U datalad-osf
+            micromamba run git config --global user.name 'NiPreps Bot'
+            micromamba run git config --global user.email 'nipreps@gmail.com'
 
       - run:
           name: Setup TemplateFlow
           command: |
-            python -m pip install --no-cache-dir -U templateflow
-            python -c "from templateflow import api as tfapi; \
-                       tfapi.get('OASIS30ANTs', resolution=1, desc=None, suffix='T1w'); \
-                       tfapi.get('OASIS30ANTs', resolution=1, desc='BrainCerebellumExtraction', suffix='mask'); "
+            micromamba run pip install --no-cache-dir -U templateflow
+            micromamba run python \
+                       -c "from templateflow import api as tfapi; \
+                           tfapi.get('OASIS30ANTs', resolution=1, desc=None, suffix='T1w'); \
+                           tfapi.get('OASIS30ANTs', resolution=1, desc='BrainCerebellumExtraction', suffix='mask'); "
 
       - save_cache:
           key: env-v1-{{ .Branch }}-{{ .BuildNum }}
           paths:
             - /tmp/templateflow
-            - /opt/conda
 
       - restore_cache:
           keys:
@@ -292,17 +292,17 @@ jobs:
       - run:
           name: Install ds001771
           command: |
-            datalad install -r /tmp/data/ds001771 -s https://github.com/nipreps-data/ds001771.git
-            datalad update -r --merge -d /tmp/data/ds001771
-            datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/anat/*
-            datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/dwi/*
-            datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/fmap/*
+            micromamba run datalad install -r /tmp/data/ds001771 -s https://github.com/nipreps-data/ds001771.git
+            micromamba run datalad update -r --merge -d /tmp/data/ds001771
+            micromamba run datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/anat/*
+            micromamba run datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/dwi/*
+            micromamba run datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/fmap/*
       - run:
           name: Install ds000206
           command: |
-            datalad install -r /tmp/data/ds000206 -s https://github.com/nipreps-data/ds000206.git
-            datalad update -r --merge -d /tmp/data/ds000206
-            datalad get -J 1 -r -d /tmp/data/ds000206/ ds000206/sub-05/*
+            micromamba run datalad install -r /tmp/data/ds000206 -s https://github.com/nipreps-data/ds000206.git
+            micromamba run datalad update -r --merge -d /tmp/data/ds000206
+            micromamba run datalad get -J 1 -r -d /tmp/data/ds000206/ ds000206/sub-05/*
       - save_cache:
           key: data-v0-{{ .Branch }}-{{ .Revision }}
           paths:
