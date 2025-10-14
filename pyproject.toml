@@ -146,7 +146,7 @@ addopts = [
   "--cov-report=xml",
   "--cov-config=pyproject.toml",
 ]
-doctest_optionflags = "ALLOW_UNICODE NORMALIZE_WHITESPACE ELLIPSIS"
+doctest_optionflags = "ALLOW_UNICODE NORMALIZE_WHITESPACE ELLIPSIS NUMBER"
 env = "PYTHONHASHSEED=0"
 filterwarnings = ["ignore::DeprecationWarning"]
 junit_family = "xunit2"
@@ -230,12 +230,10 @@ channels = ["https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public", "mrtrix3"
 platforms = ["linux-64"]
 # platforms = ["linux-64", "osx-arm64"]  # Enable for MacOS
 
-[tool.pixi.feature.editable.pypi-dependencies]
-dmriprep = { path = ".", editable = true }
-[tool.pixi.feature.production.pypi-dependencies]
-dmriprep = { path = ".", editable = false }
-
 [tool.pixi.feature.documentation.pypi-dependencies]
+niworkflows = ">=1.14.2"
+sdcflows = "*"
+smriprep = "*"
 sphinx-autobuild = "*"
 
 [tool.pixi.feature.documentation.activation.env]
@@ -261,23 +259,25 @@ description = "Serve documentation with sphinx-autobuild for live previews."
 cmd = "sphinx-autobuild docs/ docs/_build/html --host 0.0.0.0 --port 8000 --watch docs"
 
 [tool.pixi.feature.documentation.dependencies]
-make = ">=4.4.1,<5"
-hatchling = ">=1.27.0,<2"
-hatch-vcs = ">=0.5.0,<0.6"
 graphviz = ">=13.1.2,<14"
-nipype = ">=1.10.0,<2"
 hatch = ">=1.14.1,<2"
+hatch-vcs = ">=0.5.0,<0.6"
+hatchling = ">=1.27.0,<2"
+make = ">=4.4.1,<5"
+nipype = ">=1.10.0,<2"
+python = ">=3.12"
+toml = ">=0.10.2,<0.11"
 
-[tool.pixi.feature.test]
+[tool.pixi.feature.pytest]
 
-[tool.pixi.feature.test.pypi-dependencies]
+[tool.pixi.feature.pytest.pypi-dependencies]
 dmriprep = { path = ".", editable = true, extras = ["test"] }
 tox = "*"
 
-[tool.pixi.feature.test.dependencies]
+[tool.pixi.feature.pytest.dependencies]
 dipy = ">=1.11.0"
 
-[tool.pixi.feature.test.tasks.tox]
+[tool.pixi.feature.pytest.tasks.tox]
 description = "Run tox."
 cmd = "tox"
 
@@ -290,10 +290,15 @@ nodejs = ">=24.4.1,<24.10"
 [tool.pixi.feature.container.activation.env]
 FSLDIR = "$CONDA_PREFIX"
 
+[tool.pixi.feature.editable.pypi-dependencies]
+dmriprep = { path = ".", editable = true }
+[tool.pixi.feature.production.pypi-dependencies]
+dmriprep = { path = ".", editable = false }
+
 [tool.pixi.environments]
 # Local installs will use editable
 default = { features = ["editable"], solve-group = "default" }
-test = { features = ["editable", "test"], solve-group = "default" }
+test = { features = ["editable", "pytest"], solve-group = "default" }
 docs = { features = ["documentation", "doc"], solve-group = "documentation", no-default-feature = true }
 # Use "dmriprep" feature for production environment, so it is identifiable
 dmriprep = { features = ["production", "container", "telemetry"], solve-group = "production" }
@@ -301,7 +306,6 @@ dmriprep = { features = ["production", "container", "telemetry"], solve-group = 
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-hatch = ">=1.14.1,<2"
 python = ">=3.10"
 
 [tool.codespell]
