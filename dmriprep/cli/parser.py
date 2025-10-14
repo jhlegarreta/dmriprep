@@ -24,7 +24,6 @@
 
 import sys
 import typing as ty
-from argparse import Action, BooleanOptionalAction
 from pathlib import Path
 
 from .. import config
@@ -38,7 +37,12 @@ def _build_parser(**kwargs):
 
     ``kwargs`` are passed to ``argparse.ArgumentParser`` (mainly useful for debugging).
     """
-    from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+    from argparse import (
+        Action,
+        ArgumentDefaultsHelpFormatter,
+        ArgumentParser,
+        BooleanOptionalAction,
+    )
     from functools import partial
 
     from niworkflows.utils.spaces import OutputReferencesAction, Reference
