@@ -21,6 +21,7 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """Miscellaneous utilities."""
+from functools import cache
 
 
 def check_deps(workflow):
@@ -70,3 +71,22 @@ def fmt_subjects_sessions(subses: list[tuple[str]], concat_limit: int = 1):
             output.append(f'sub-{subject} ses-{session}')
 
     return ', '.join(output)
+
+
+@cache
+def estimate_image_mem_usage(img_fname: str) -> tuple[int, dict]:
+    import nibabel as nb
+    import numpy as np
+
+    img = nb.load(img_fname)
+    nvox = int(np.prod(img.shape, dtype='u8'))
+    # Assume tools will coerce to 8-byte floats to be safe
+    img_size_gb = 8 * nvox / (1024**3)
+    img_tlen = img.shape[-1]
+    mem_gb = {
+        'filesize': img_size_gb,
+        'resampled': img_size_gb * 4,
+        'largemem': img_size_gb * (max(img_tlen / 100, 1.0) + 4),
+    }
+
+    return img_tlen, mem_gb
