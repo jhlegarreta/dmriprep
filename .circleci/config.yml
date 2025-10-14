@@ -1,27 +1,3 @@
-# reusable anchors
-docs_deploy: &docs
-  docker:
-    - image: node:8.10.0
-  steps:
-    - checkout
-    - attach_workspace:
-        at: docs/_build
-    - run:
-        name: Disable jekyll builds
-        command: touch docs/_build/versioned/html/.nojekyll
-    - run:
-        name: Install and configure dependencies
-        command: |
-          npm install -g --silent gh-pages@2.0.1
-          git config user.email "nipreps@gmail.com"
-          git config user.name "ci-build"
-    - add_ssh_keys:
-        fingerprints:
-          - "29:00:83:05:e9:af:5d:0f:3b:18:7a:3f:0a:98:1a:ef"
-    - run:
-        name: Deploy docs to gh-pages branch
-        command: gh-pages --dotfiles --message "doc(update) [skip ci]" --dist docs/_build/versioned/html
-
 _machine_defaults: &machine_defaults
   environment:
     TZ: "/usr/share/zoneinfo/America/Los_Angeles"
@@ -389,39 +365,14 @@ jobs:
           command: apt update && apt -y install graphviz git
       - checkout
       - run:
-          name: Build only this commit
-          command: SPHINXOPTS="-W" BUILDDIR="_build/unversioned" pixi run build-docs
-      - store_artifacts:
-          path: ./docs/_build/unversioned/html
-      - run:
-          name: Generate Versioned Docs
-          command: |
-            set +e
-            force_versioned="$( git log --format=oneline -n 1 $CIRCLE_SHA1 | grep -i -E '\[docs?[ _]?versions?\]' )"
-            set -e
-            if [[ "x${CIRCLE_TAG}" = "x" && "${CIRCLE_BRANCH}" != "master" && "x${force_versioned}" = "x" ]]; then
-              echo "Not a tag or master branch - skipping versioned docs."
-              circleci step halt
-            else
-              CURBRANCH=${CIRCLE_TAG:-$CIRCLE_BRANCH} BUILDDIR="_build/unversioned" pixi run build-versioneddocs
-            fi
+          name: Build documentation
+          command: pixi run build-docs
       - save_cache:
           key: docs-v1-{{ .Branch }}-{{ .Revision }}
           paths:
-            - ./docs/_build/versioned/html
-      - persist_to_workspace:
-          root: docs/_build
-          paths:
-            - versioned/html
-            - unversioned/html
+            - ./docs/_build/html
       - store_artifacts:
-          path: ./docs/_build/versioned/html
-
-  deploy_docs_tag:
-    <<: *docs
-
-  deploy_docs_master:
-    <<: *docs
+          path: ./docs/_build/html
 
   deploy_docker_patches:
     <<: *machine_defaults
@@ -625,27 +576,6 @@ workflows:
                 - /tests?\/.*/
                 - /ds000206\/.*/
                 - /ds001771\/.*/
-            tags:
-              only: /.*/
-
-      - deploy_docs_master:
-          context:
-            - nipreps-common
-          requires:
-            - build_docs
-            - test_deploy_pypi
-          filters:
-            branches:
-              only: /master/
-            tags:
-              ignore: /.*/
-
-      - deploy_docs_tag:
-          requires:
-            - deployable
-          filters:
-            branches:
-              ignore: /.*/
             tags:
               only: /.*/
 
