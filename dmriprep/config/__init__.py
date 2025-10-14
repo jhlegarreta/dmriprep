@@ -99,6 +99,7 @@ finally:
     # ignoring the most annoying warnings
     import logging
     import os
+    import random
     import sys
     from contextlib import suppress
     from pathlib import Path
@@ -187,15 +188,26 @@ class _Config:
         raise RuntimeError('Configuration type is not instantiable.')
 
     @classmethod
-    def load(cls, settings, init=True):
+    def load(cls, settings, init=True, ignore=None):
         """Store settings from a dictionary."""
+        ignore = ignore or {}
         for k, v in settings.items():
-            if v is None:
+            if k in ignore or v is None:
                 continue
             if k in cls._paths:
-                setattr(cls, k, Path(v).absolute())
-                continue
-            if hasattr(cls, k):
+                if isinstance(v, list | tuple):
+                    setattr(cls, k, [Path(val).absolute() for val in v])
+                elif isinstance(v, dict):
+                    setattr(cls, k, {key: Path(val).absolute() for key, val in v.items()})
+                else:
+                    setattr(cls, k, Path(v).absolute())
+            elif hasattr(cls, k):
+                match k:
+                    # Handle special deserializations
+                    case 'processing_groups':
+                        v = _deserialize_pg(v)
+                    case _:
+                        pass
                 setattr(cls, k, v)
 
         if init:
@@ -350,12 +362,14 @@ class execution(_Config):
     """A dictionary of BIDS selection filters."""
     boilerplate_only = False
     """Only generate a boilerplate."""
-    sloppy = False
-    """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
+    dataset_links = {}
+    """A dictionary of dataset links to be used to track Sources in sidecars."""
     debug = []
     """Debug mode(s)."""
     derivatives = {}
     """Path(s) to search for pre-computed derivatives"""
+    dmriprep_dir = None
+    """Root of dMRIPrep BIDS Derivatives dataset. Depends on output_layout."""
     fs_license_file = _fs_license
     """An existing file containing a FreeSurfer license."""
     fs_subjects_dir = None
@@ -371,18 +385,26 @@ class execution(_Config):
     md_only_boilerplate = False
     """Do not convert boilerplate from MarkDown to LaTex and HTML."""
     notrack = False
-    """Do not monitor *dMRIPrep* using Google Analytics."""
+    """Do not collect telemetry information for *dMRIPrep*."""
     output_dir = None
     """Folder where derivatives will be stored."""
+    output_layout = None
+    """Layout of derivatives within output_dir."""
     output_spaces = None
     """List of (non)standard spaces designated (with the ``--output-spaces`` flag of
     the command line) as spatial references for outputs."""
+    processing_groups = None
+    """List of tuples (participant, session(s)) that will be preprocessed."""
+    participant_label = None
+    """List of participant identifiers that are to be preprocessed."""
     reports_only = False
     """Only build the reports, based on the reportlets found in a cached working directory."""
     run_uuid = f'{strftime("%Y%m%d-%H%M%S")}_{uuid4()}'
     """Unique identifier of this particular run."""
-    participant_label = None
-    """List of participant identifiers that are to be preprocessed."""
+    session_label = None
+    """List of session identifiers that are to be preprocessed."""
+    sloppy = False
+    """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
     templateflow_home = _templateflow_home
     """The root folder of the TemplateFlow client."""
     work_dir = Path('work').absolute()
@@ -397,6 +419,7 @@ class execution(_Config):
         'bids_database_dir',
         'bids_dir',
         'derivatives',
+        'dmriprep_dir',
         'fs_license_file',
         'fs_subjects_dir',
         'layout',
@@ -495,31 +518,48 @@ class workflow(_Config):
 
     anat_only = False
     """Execute the anatomical preprocessing only."""
-    dwi2t1w_init = 'register'
-    """Whether to use standard coregistration ('register') or to initialize coregistration from the
-    DWI header ('header')."""
+    dwi2anat_dof = None
+    """Degrees of freedom of the DWI-to-anatomical registration steps."""
+    dwi2anat_init = 'auto'
+    """Method of initial DWI to anatomical coregistration. If `auto`, a T2w image is used
+    if available, otherwise the T1w image. `t1w` forces use of the T1w, `t2w` forces use of
+    the T2w, and `header` uses the DWI header information without an initial registration."""
     fmap_bspline = None
     """Regularize fieldmaps with a field of B-Spline basis."""
     fmap_demean = None
     """Remove the mean from fieldmaps."""
-    force_syn = None
-    """Run *fieldmap-less* susceptibility-derived distortions estimation."""
+    force = None
+    """Force particular steps for *dMRIPrep*."""
+    fs_no_resume = None
+    """Adjust pipeline to reuse base template of existing longitudinal *FreeSurfer*."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     ignore = None
     """Ignore particular steps for *dMRIPrep*."""
-    longitudinal = False
-    """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
+    level = None
+    """Level of preprocessing to complete. One of ['minimal', 'resampling', 'full']."""
+    run_msmsulc = True
+    """Run Multimodal Surface Matching surface registration."""
     run_reconall = True
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
     skull_strip_template = 'OASIS30ANTs'
     """Change default brain extraction template."""
+    skull_strip_t1w = 'force'
+    """Skip brain extraction of the T1w image (default is ``force``, meaning that
+    *dMRIPrep* will run brain extraction of the T1w)."""
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
-    use_syn = None
+    subject_anatomical_reference = 'first-lex'
+    """Method to produce the reference anatomical space. Available options are:
+    `first-lex` will use the first image in lexicographical order, `unbiased` will
+    construct an unbiased template from all available images,
+    and `sessionwise` will independently process each session."""
+    use_bbr = None
+    """Run boundary-based registration for DWI-to-T1w registration."""
+    use_syn_sdc = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation
     in the absence of any alternatives."""
 
@@ -566,24 +606,97 @@ class loggers:
         )
 
 
-def from_dict(settings):
-    """Read settings from a flat dictionary."""
-    nipype.load(settings)
-    execution.load(settings)
-    workflow.load(settings)
+class seeds(_Config):
+    """Initialize the PRNG and track random seed assignments"""
+
+    _random_seed = None
+    master = None
+    """Master random seed to initialize the Pseudorandom Number Generator (PRNG)"""
+    ants = None
+    """Seed used for antsRegistration, antsAI, antsMotionCorr"""
+    numpy = None
+    """Seed used by NumPy"""
+
+    @classmethod
+    def init(cls):
+        if cls._random_seed is not None:
+            cls.master = cls._random_seed
+        if cls.master is None:
+            cls.master = random.randint(1, 65536)
+        random.seed(cls.master)  # initialize the PRNG
+        # functions to set program specific seeds
+        cls.ants = _set_ants_seed()
+        cls.numpy = _set_numpy_seed()
+
+
+def _set_ants_seed():
+    """Fix random seed for antsRegistration, antsAI, antsMotionCorr"""
+    val = random.randint(1, 65536)
+    os.environ['ANTS_RANDOM_SEED'] = str(val)
+    return val
+
+
+def _set_numpy_seed():
+    """NumPy's random seed is independent from Python's `random` module"""
+    import numpy as np
+
+    val = random.randint(1, 65536)
+    np.random.seed(val)
+    return val
+
+
+def from_dict(settings, init=True, ignore=None):
+    """Read settings from a flat dictionary.
+
+    Arguments
+    ---------
+    setting : dict
+        Settings to apply to any configuration
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    ignore : :py:class:`~collections.abc.Container`
+        Collection of keys in ``setting`` to ignore
+    """
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
+
+    nipype.load(settings, init=initialize('nipype'), ignore=ignore)
+    execution.load(settings, init=initialize('execution'), ignore=ignore)
+    workflow.load(settings, init=initialize('workflow'), ignore=ignore)
+    seeds.load(settings, init=initialize('seeds'), ignore=ignore)
+
     loggers.init()
 
 
-def load(filename):
-    """Load settings from file."""
+def load(filename, skip=None, init=True):
+    """Load settings from file.
+
+    Arguments
+    ---------
+    filename : :py:class:`os.PathLike`
+        TOML file containing dMRIPrep configuration.
+    skip : dict or None
+        Sets of values to ignore during load, keyed by section name
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    """
     from toml import loads
+
+    skip = skip or {}
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
 
     filename = Path(filename)
     settings = loads(filename.read_text())
     for sectionname, configs in settings.items():
         if sectionname != 'environment':
             section = getattr(sys.modules[__name__], sectionname)
-            section.load(configs)
+            ignore = skip.get(sectionname)
+            section.load(configs, ignore=ignore, init=initialize(sectionname))
     init_spaces()
 
 
@@ -605,11 +718,16 @@ def get(flat=False):
     }
 
 
-def dumps(flat=False):
+def dumps():
     """Format config into toml."""
     from toml import dumps
 
-    return dumps(get(flat=flat))
+    settings = get()
+    # Serialize to play nice with TOML
+    if pg := settings['execution'].get('processing_groups'):
+        settings['execution']['processing_groups'] = _serialize_pg(pg)
+
+    return dumps(settings)
 
 
 def to_filename(filename):
@@ -633,3 +751,50 @@ def init_spaces(checkpoint=True):
 
     # Make the SpatialReferences object available
     workflow.spaces = spaces
+
+
+def _serialize_pg(value: list[tuple[str, str | list[str] | None]]) -> list[str]:
+    """
+    Serialize a list of participant-session tuples to be TOML-compatible.
+
+    Examples
+    --------
+    >>> _serialize_pg([('01', 'pre'), ('01', ['post'])])
+    ['sub-01_ses-pre', 'sub-01_ses-post']
+    >>> _serialize_pg([('01', ['pre', 'post']), ('02', ['post'])])
+    ['sub-01_ses-pre,post', 'sub-02_ses-post']
+    >>> _serialize_pg([('01', None), ('02', ['pre'])])
+    ['sub-01', 'sub-02_ses-pre']
+    """
+    serial = []
+    for sub, ses in value:
+        if ses is None:
+            serial.append(f'sub-{sub}')
+            continue
+        if isinstance(ses, str):
+            ses = [ses]
+        serial.append(f'sub-{sub}_ses-{",".join(ses)}')
+    return serial
+
+
+def _deserialize_pg(value: list[str]) -> list[tuple[str, list[str] | None]]:
+    """
+    Deserialize a list of participant-session tuples to be TOML-compatible.
+
+    Examples
+    --------
+    >>> _deserialize_pg(['sub-01_ses-pre', 'sub-01_ses-post'])
+    [('01', ['pre']), ('01', ['post'])]
+    >>> _deserialize_pg(['sub-01_ses-pre,post', 'sub-02_ses-post'])
+    [('01', ['pre', 'post']), ('02', ['post'])]
+    >>> _deserialize_pg(['sub-01', 'sub-02_ses-pre'])
+    [('01', None), ('02', ['pre'])]
+    """
+    deserial = []
+    for val in value:
+        sub, _, ses = val.partition('_')
+        sub = sub.removeprefix('sub-')
+        if ses:
+            ses = ses.removeprefix('ses-').split(',')
+        deserial.append((sub, ses or None))
+    return deserial

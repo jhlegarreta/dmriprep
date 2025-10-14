@@ -1,7 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 #
-# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+# Copyright The NiPreps Developers <nipreps@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,40 +22,103 @@
 #
 """Utilities to handle BIDS inputs."""
 
+from __future__ import annotations
+
 import json
 import os
+import re
 import sys
+from collections import defaultdict
+from functools import cache
 from pathlib import Path
 
-from bids import BIDSLayout
+from bids.layout import BIDSLayout
+from bids.utils import listify
+
+from dmriprep.data import load as load_data
+
+@cache
+def _get_layout(derivatives_dir: Path) -> BIDSLayout:
+    import niworkflows.data
+
+    return BIDSLayout(
+        derivatives_dir, config=[niworkflows.data.load('nipreps.json')], validate=False
+    )
 
 
-def collect_data(bids_dir, participant_label, bids_validate=True):
-    """Replacement for niworkflows' version."""
-    if isinstance(bids_dir, BIDSLayout):
-        layout = bids_dir
-    else:
-        layout = BIDSLayout(str(bids_dir), validate=bids_validate)
-
-    queries = {
-        'fmap': {'datatype': 'fmap'},
-        'dwi': {'datatype': 'dwi', 'suffix': 'dwi'},
-        'flair': {'datatype': 'anat', 'suffix': 'FLAIR'},
-        't2w': {'datatype': 'anat', 'suffix': 'T2w'},
-        't1w': {'datatype': 'anat', 'suffix': 'T1w'},
-        'roi': {'datatype': 'anat', 'suffix': 'roi'},
-    }
-
-    subj_data = {
-        dtype: sorted(
-            layout.get(
-                return_type='file', subject=participant_label, extension=['nii', 'nii.gz'], **query
-            )
+def collect_derivatives(
+    derivatives_dir: Path,
+    entities: dict,
+    fieldmap_id: str | None = None,
+    spec: dict | None = None,
+    patterns: list[str] | None = None,
+):
+    """Gather existing derivatives and compose a cache."""
+    if spec is None or patterns is None:
+        _spec, _patterns = tuple(
+            json.loads(load_data.readable('io_spec.json').read_text()).values()
         )
-        for dtype, query in queries.items()
-    }
 
-    return subj_data, layout
+        if spec is None:
+            spec = _spec
+        if patterns is None:
+            patterns = _patterns
+
+    derivs_cache = defaultdict(list, {})
+    layout = _get_layout(derivatives_dir)
+
+    # search for both dwirefs
+    for key, query in spec['baseline'].items():
+        item = layout.get(return_type='filename', **{**entities, **query})
+        if not item:
+            continue
+        derivs_cache[f'{key}_dwiref'] = item[0] if len(item) == 1 else item
+
+    transforms_cache: dict[str, list | str] = {}
+    for name, query in spec.get('transforms', {}).items():
+        if name == 'dwi2fmap' and fieldmap_id:
+            query = {**query, 'to': re.sub(r'[^a-zA-Z0-9]', '', fieldmap_id)}
+        item = layout.get(return_type='filename', **{**entities, **query})
+        if not item:
+            continue
+        transforms_cache[name] = item[0] if len(item) == 1 else item
+
+    derivs_cache['transforms'] = transforms_cache
+    return derivs_cache
+
+
+def extract_entities(file_list):
+    """
+    Return a dictionary of common entities given a list of files.
+
+    Examples
+    --------
+    >>> extract_entities("sub-01/anat/sub-01_T1w.nii.gz")
+    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+    >>> extract_entities(["sub-01/anat/sub-01_T1w.nii.gz"] * 2)
+    {'subject': '01', 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+    >>> extract_entities(["sub-01/anat/sub-01_run-1_T1w.nii.gz",
+    ...                   "sub-01/anat/sub-01_run-2_T1w.nii.gz"])
+    {'subject': '01', 'run': [1, 2], 'suffix': 'T1w', 'datatype': 'anat', 'extension': '.nii.gz'}
+
+    """
+    from collections import defaultdict
+
+    from bids.layout import parse_file_entities
+
+    entities: dict[str, list] = defaultdict(list)
+    for entity, value in [
+        pair for fname in listify(file_list) for pair in parse_file_entities(fname).items()
+    ]:
+        entities[entity].append(value)
+
+    def _unique(values):
+        values = sorted(set(values))
+        if len(values) == 1:
+            return values[0]
+        return values
+
+    return {key: _unique(val) for key, val in entities.items()}
 
 
 def write_derivative_description(bids_dir, deriv_dir):
@@ -102,7 +165,7 @@ def write_derivative_description(bids_dir, deriv_dir):
         json.dump(desc, fobj, indent=4)
 
 
-def validate_input_dir(exec_env, bids_dir, participant_label):
+def validate_input_dir(exec_env, bids_dir, participant_label, need_T1w=True):
     # Ignore issues and warnings that should not influence dMRIPrep
     import subprocess
     import tempfile
@@ -145,7 +208,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
             'MISSING_TSV_COLUMN_EEG_ELECTRODES',
             'MISSING_SESSION',
         ],
-        'error': ['NO_T1W'],
+        'error': ['NO_T1W'] if need_T1w else [],
         'ignoredFiles': ['/dataset_description.json', '/participants.tsv'],
     }
     # Limit validation only to data from requested participants
