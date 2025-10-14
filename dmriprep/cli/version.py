@@ -67,11 +67,11 @@ def check_latest():
                 if versions:
                     latest = sorted(versions)[-1]
 
-    if latest is not None:
-        with suppress(Exception):
-            cachefile.write_text(
-                '|'.join((f'{latest}', datetime.now(timezone.utc).strftime(DATE_FMT)))
-            )
+        if latest is not None:
+            with suppress(Exception):
+                cachefile.write_text(
+                    '|'.join((f'{latest}', datetime.now(timezone.utc).strftime(DATE_FMT)))
+                )
 
     return latest
 
@@ -95,4 +95,4 @@ https://raw.githubusercontent.com/nipreps/dmriprep/master/.versions.json""",
     )
 
     reason = flagged.get(__version__, None)
-    return reason is not None, reason
+    return __version__ in flagged, reason

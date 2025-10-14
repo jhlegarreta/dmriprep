@@ -99,7 +99,7 @@ def test_check_latest1(tmpdir, monkeypatch):
 
     cachefile.write_text('2.0.0|20180121')
     v = check_latest()
-    assert v is None
+    assert v == Version('2.0.0')
 
     cachefile.unlink()
     v = check_latest()

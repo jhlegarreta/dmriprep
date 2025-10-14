@@ -335,29 +335,30 @@ def normalize_gradients(
     >>> bvals = np.array([1000] * bvecs.shape[0])
     >>> normalize_gradients(bvecs, bvals, 50, raise_error=True)
     Traceback (most recent call last):
-    ValueError:
+        ...
+    ValueError: Inconsistent bvals and bvecs (0, 1 low-b, respectively).
 
     >>> bvals[0] = 0.0
     >>> norm_vecs, norm_vals = normalize_gradients(bvecs, bvals)
-    >>> np.all(norm_vecs[0] == 0)
+    >>> bool(np.all(norm_vecs[0] == 0))
     True
 
     >>> norm_vecs[1, ...].tolist()
     [1.0, 0.0, 0.0]
 
-    >>> norm_vals[0]
+    >>> int(norm_vals[0])
     0
-    >>> norm_vals[1]
+    >>> int(norm_vals[1])
     4000
-    >>> norm_vals[-2]
+    >>> int(norm_vals[-2])
     600
-    >>> norm_vals[-1]
+    >>> int(norm_vals[-1])
     3000
 
     >>> norm_vecs, norm_vals = normalize_gradients(bvecs, bvals, b_scale=False)
-    >>> norm_vals[0]
+    >>> int(norm_vals[0])
     0
-    >>> np.all(norm_vals[1:] == 1000)
+    >>> bool(np.all(norm_vals[1:] == 1000))
     True
 
     """
