@@ -20,16 +20,7 @@
 #
 #     https://www.nipreps.org/community/licensing/
 #
-"""
-Eddy-currents and head-motion estimation/correction.
-
-.. testsetup::
-    >>> tmpdir = getfixture('tmpdir')
-    >>> tmp = tmpdir.chdir() # changing to a temporary directory
-    >>> nb.Nifti1Image(np.zeros((90, 90, 60, 6)), None, None).to_filename(
-    ...     tmpdir.join('dwi.nii.gz').strpath)
-
-"""
+"""Eddy-currents and head-motion estimation/correction."""
 
 from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
@@ -40,11 +31,19 @@ def gen_eddy_textfiles(in_file, in_meta, newpath=None):
     """
     Generate the acquisition-parameters and index files for FSL ``eddy_openmp``.
 
+    .. testsetup::
+        >>> tmpdir = getfixture('tmpdir')
+        >>> tmp = tmpdir.chdir() # changing to a temporary directory
+        >>> dwi_path = tmpdir.join('dwi.nii.gz').strpath
+        >>> nb.Nifti1Image(np.zeros((90, 90, 60, 6)), None, None).to_filename(
+        ...     dwi_path)
+
     Examples
     --------
     >>> out_acqparams, out_index = gen_eddy_textfiles(
-    ...     "dwi.nii.gz",
+    ...     dwi_path,
     ...     {"PhaseEncodingDirection": "j-", "TotalReadoutTime": 0.005},
+    ...     tmpdir.strpath,
     ... )
     >>> Path(out_acqparams).read_text()
     '0 -1 0 0.0050000'
