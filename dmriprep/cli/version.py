@@ -23,7 +23,7 @@
 """Version CLI helpers."""
 
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -50,11 +50,11 @@ def check_latest():
     if latest and date:
         try:
             latest = Version(latest)
-            date = datetime.strptime(date, DATE_FMT)
+            date = datetime.strptime(date, DATE_FMT).replace(tzinfo=timezone.utc)
         except (InvalidVersion, ValueError):
             latest = None
         else:
-            if abs((datetime.now() - date).days) > RELEASE_EXPIRY_DAYS:
+            if abs((datetime.now(timezone.utc) - date).days) > RELEASE_EXPIRY_DAYS:
                 outdated = True
 
     if latest is None or outdated is True:
@@ -69,7 +69,9 @@ def check_latest():
 
     if latest is not None:
         with suppress(Exception):
-            cachefile.write_text('|'.join((f'{latest}', datetime.now().strftime(DATE_FMT))))
+            cachefile.write_text(
+                '|'.join((f'{latest}', datetime.now(timezone.utc).strftime(DATE_FMT)))
+            )
 
     return latest
 

@@ -22,13 +22,17 @@
 #
 """Test vector utilities."""
 
-from collections import namedtuple
+from typing import NamedTuple
 
 import nibabel as nb
 import numpy as np
 import pytest
 
 from dmriprep.utils import vectors as v
+
+
+class _AffineTuple(NamedTuple):
+    affine: np.ndarray
 
 
 def test_corruption(tmpdir, dipy_test_data, monkeypatch):
@@ -51,7 +55,7 @@ def test_corruption(tmpdir, dipy_test_data, monkeypatch):
         dgt.to_filename('dwi', filetype='fsl')  # You can do this iff the affine is set.
 
     # check accessing obj.affine
-    dgt = v.DiffusionGradientTable(dwi_file=namedtuple('Affine', ['affine'])(affine))
+    dgt = v.DiffusionGradientTable(dwi_file=_AffineTuple(affine))
     assert np.all(dgt.affine == affine)
     dgt = v.DiffusionGradientTable(dwi_file=affine)
     assert np.all(dgt.affine == affine)
@@ -59,18 +63,18 @@ def test_corruption(tmpdir, dipy_test_data, monkeypatch):
     # Perform various corruption checks using synthetic corrupted bval-bvec.
     dgt = v.DiffusionGradientTable()
     dgt.bvecs = bvecs
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='The number of b-vectors and b-values do not match'):
         dgt.bvals = bvals[:-1]
 
     dgt = v.DiffusionGradientTable()
     dgt.bvals = bvals
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='The number of b-vectors and b-values do not match'):
         dgt.bvecs = bvecs[:-1]
 
     # Missing b0
     bval_no_b0 = bvals.copy()
     bval_no_b0[0] = 51
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='Inconsistent bvals and bvecs'):
         dgt = v.DiffusionGradientTable(
             dwi_file=dipy_test_data['dwi_file'],
             bvals=bval_no_b0,
@@ -79,7 +83,7 @@ def test_corruption(tmpdir, dipy_test_data, monkeypatch):
         )
     bvec_no_b0 = bvecs.copy()
     bvec_no_b0[0] = np.array([1.0, 0.0, 0.0])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='Inconsistent bvals and bvecs'):
         dgt = v.DiffusionGradientTable(
             dwi_file=dipy_test_data['dwi_file'],
             bvals=bvals,
@@ -124,7 +128,7 @@ def test_corruption(tmpdir, dipy_test_data, monkeypatch):
         assert dgt.generate_vecval() is None  # Test nothing is executed.
 
     # Miscellaneous tests
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='Unknown filetype "mrtrix"'):
         dgt.to_filename('path', filetype='mrtrix')
 
 
