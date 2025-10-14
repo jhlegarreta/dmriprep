@@ -253,17 +253,19 @@ def _find_nearest_path(path_dict, input_path):
     >>> input_path = 'bids::sub-01/func/sub-01_task-rest_bold.nii.gz'
     >>> _find_nearest_path(path_dict, input_path)  # already a BIDS-URI
     'bids::sub-01/func/sub-01_task-rest_bold.nii.gz'
+
     """
     # Don't modify BIDS-URIs
     if isinstance(input_path, str) and input_path.startswith('bids:'):
         return input_path
 
+    # Calculate all distances and sort by distance
     input_path = Path(input_path)
-    matching_path = None
-    for key, path in path_dict.items():
-        if input_path.is_relative_to(path):
-            relative_path = input_path.relative_to(path)
-            if (matching_path is None) or (len(relative_path.parts) < len(matching_path.parts)):
-                return f'{key}{relative_path}'
-
-    return str(input_path.absolute())
+    matching_paths = sorted(
+        [
+            (len(input_path.relative_to(path).parts), f'{key}{input_path.relative_to(path)}')
+            for key, path in path_dict.items()
+            if input_path.is_relative_to(path)
+        ]
+    )
+    return str(input_path.absolute()) if not matching_paths else matching_paths[0][1]

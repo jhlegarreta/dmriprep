@@ -2017,8 +2017,91 @@ packages:
   requires_python: '>=3.6'
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev104+gd4298de7d.d20251014
-  sha256: 0e633a0039e9ced1a4b64b96dadf2a5fe9bf43e8ce7bd496eed7816adf094047
+  version: 25.0.0.dev109+gd48c2b77f
+  sha256: dfad6fbca705362a5ebf195e6f484e8e997b91121f4652d2c778ad67b185b307
+  requires_dist:
+  - dipy>=1.8.0
+  - h5py
+  - looseversion>=1.3
+  - nibabel>=5.1.1
+  - nipype>=1.9.0
+  - nireports>=24.1.0
+  - nitransforms>=25.0.1
+  - niworkflows>=1.14.2
+  - numpy>=2.0
+  - packaging>=24
+  - pandas>=2.2
+  - psutil>=5.4
+  - pybids>=0.16
+  - pyyaml
+  - requests>=2.27
+  - sdcflows>=2.15.0
+  - smriprep>=0.19.2
+  - templateflow>=24.2.2
+  - toml>=0.10
+  - transforms3d>=0.4.2
+  - coverage[toml]>=5.2.1 ; extra == 'all'
+  - fuzzywuzzy ; extra == 'all'
+  - migas>=0.4.0 ; extra == 'all'
+  - nbsphinx ; extra == 'all'
+  - pydot>=1.2.3 ; extra == 'all'
+  - pydotplus ; extra == 'all'
+  - pytest-cov>=2.11 ; extra == 'all'
+  - pytest-env ; extra == 'all'
+  - pytest-xdist>=2.5 ; extra == 'all'
+  - pytest>=8.1 ; extra == 'all'
+  - python-levenshtein ; extra == 'all'
+  - sentry-sdk>=1.3 ; extra == 'all'
+  - sphinx-argparse ; extra == 'all'
+  - sphinx-github-style ; extra == 'all'
+  - sphinx-rtd-theme ; extra == 'all'
+  - sphinx>=6.2,<8 ; extra == 'all'
+  - sphinxcontrib-apidoc ; extra == 'all'
+  - sphinxcontrib-napoleon ; extra == 'all'
+  - datalad ; extra == 'container'
+  - datalad-osf ; extra == 'container'
+  - migas>=0.4.0 ; extra == 'container'
+  - sentry-sdk>=1.3 ; extra == 'container'
+  - pre-commit ; extra == 'dev'
+  - ruff ; extra == 'dev'
+  - nbsphinx ; extra == 'doc'
+  - pydot>=1.2.3 ; extra == 'doc'
+  - pydotplus ; extra == 'doc'
+  - sphinx-argparse ; extra == 'doc'
+  - sphinx-github-style ; extra == 'doc'
+  - sphinx-rtd-theme ; extra == 'doc'
+  - sphinx>=6.2,<8 ; extra == 'doc'
+  - sphinxcontrib-apidoc ; extra == 'doc'
+  - sphinxcontrib-napoleon ; extra == 'doc'
+  - nbsphinx ; extra == 'docs'
+  - pydot>=1.2.3 ; extra == 'docs'
+  - pydotplus ; extra == 'docs'
+  - sphinx-argparse ; extra == 'docs'
+  - sphinx-github-style ; extra == 'docs'
+  - sphinx-rtd-theme ; extra == 'docs'
+  - sphinx>=6.2,<8 ; extra == 'docs'
+  - sphinxcontrib-apidoc ; extra == 'docs'
+  - sphinxcontrib-napoleon ; extra == 'docs'
+  - duecredit ; extra == 'duecredit'
+  - fuzzywuzzy ; extra == 'maint'
+  - python-levenshtein ; extra == 'maint'
+  - migas>=0.4.0 ; extra == 'telemetry'
+  - sentry-sdk>=1.3 ; extra == 'telemetry'
+  - coverage[toml]>=5.2.1 ; extra == 'test'
+  - pytest-cov>=2.11 ; extra == 'test'
+  - pytest-env ; extra == 'test'
+  - pytest-xdist>=2.5 ; extra == 'test'
+  - pytest>=8.1 ; extra == 'test'
+  - coverage[toml]>=5.2.1 ; extra == 'tests'
+  - pytest-cov>=2.11 ; extra == 'tests'
+  - pytest-env ; extra == 'tests'
+  - pytest-xdist>=2.5 ; extra == 'tests'
+  - pytest>=8.1 ; extra == 'tests'
+  requires_python: '>=3.10'
+- pypi: ./
+  name: dmriprep
+  version: 25.0.0.dev109+gd48c2b77f.d20251014
+  sha256: dfad6fbca705362a5ebf195e6f484e8e997b91121f4652d2c778ad67b185b307
   requires_dist:
   - dipy>=1.8.0
   - h5py
@@ -2099,89 +2182,6 @@ packages:
   - pytest>=8.1 ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
-- pypi: ./
-  name: dmriprep
-  version: 25.0.0.dev104+gd4298de7d.d20251014
-  sha256: 0e633a0039e9ced1a4b64b96dadf2a5fe9bf43e8ce7bd496eed7816adf094047
-  requires_dist:
-  - dipy>=1.8.0
-  - h5py
-  - looseversion>=1.3
-  - nibabel>=5.1.1
-  - nipype>=1.9.0
-  - nireports>=24.1.0
-  - nitransforms>=25.0.1
-  - niworkflows>=1.14.2
-  - numpy>=2.0
-  - packaging>=24
-  - pandas>=2.2
-  - psutil>=5.4
-  - pybids>=0.16
-  - pyyaml
-  - requests>=2.27
-  - sdcflows>=2.15.0
-  - smriprep>=0.19.2
-  - templateflow>=24.2.2
-  - toml>=0.10
-  - transforms3d>=0.4.2
-  - coverage[toml]>=5.2.1 ; extra == 'all'
-  - fuzzywuzzy ; extra == 'all'
-  - migas>=0.4.0 ; extra == 'all'
-  - nbsphinx ; extra == 'all'
-  - pydot>=1.2.3 ; extra == 'all'
-  - pydotplus ; extra == 'all'
-  - pytest-cov>=2.11 ; extra == 'all'
-  - pytest-env ; extra == 'all'
-  - pytest-xdist>=2.5 ; extra == 'all'
-  - pytest>=8.1 ; extra == 'all'
-  - python-levenshtein ; extra == 'all'
-  - sentry-sdk>=1.3 ; extra == 'all'
-  - sphinx-argparse ; extra == 'all'
-  - sphinx-github-style ; extra == 'all'
-  - sphinx-rtd-theme ; extra == 'all'
-  - sphinx>=6.2,<8 ; extra == 'all'
-  - sphinxcontrib-apidoc ; extra == 'all'
-  - sphinxcontrib-napoleon ; extra == 'all'
-  - datalad ; extra == 'container'
-  - datalad-osf ; extra == 'container'
-  - migas>=0.4.0 ; extra == 'container'
-  - sentry-sdk>=1.3 ; extra == 'container'
-  - pre-commit ; extra == 'dev'
-  - ruff ; extra == 'dev'
-  - nbsphinx ; extra == 'doc'
-  - pydot>=1.2.3 ; extra == 'doc'
-  - pydotplus ; extra == 'doc'
-  - sphinx-argparse ; extra == 'doc'
-  - sphinx-github-style ; extra == 'doc'
-  - sphinx-rtd-theme ; extra == 'doc'
-  - sphinx>=6.2,<8 ; extra == 'doc'
-  - sphinxcontrib-apidoc ; extra == 'doc'
-  - sphinxcontrib-napoleon ; extra == 'doc'
-  - nbsphinx ; extra == 'docs'
-  - pydot>=1.2.3 ; extra == 'docs'
-  - pydotplus ; extra == 'docs'
-  - sphinx-argparse ; extra == 'docs'
-  - sphinx-github-style ; extra == 'docs'
-  - sphinx-rtd-theme ; extra == 'docs'
-  - sphinx>=6.2,<8 ; extra == 'docs'
-  - sphinxcontrib-apidoc ; extra == 'docs'
-  - sphinxcontrib-napoleon ; extra == 'docs'
-  - duecredit ; extra == 'duecredit'
-  - fuzzywuzzy ; extra == 'maint'
-  - python-levenshtein ; extra == 'maint'
-  - migas>=0.4.0 ; extra == 'telemetry'
-  - sentry-sdk>=1.3 ; extra == 'telemetry'
-  - coverage[toml]>=5.2.1 ; extra == 'test'
-  - pytest-cov>=2.11 ; extra == 'test'
-  - pytest-env ; extra == 'test'
-  - pytest-xdist>=2.5 ; extra == 'test'
-  - pytest>=8.1 ; extra == 'test'
-  - coverage[toml]>=5.2.1 ; extra == 'tests'
-  - pytest-cov>=2.11 ; extra == 'tests'
-  - pytest-env ; extra == 'tests'
-  - pytest-xdist>=2.5 ; extra == 'tests'
-  - pytest>=8.1 ; extra == 'tests'
-  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/a2/55/8f8cab2afd404cf578136ef2cc5dfb50baa1761b68c9da1fb1e4eed343c9/docopt-0.6.2.tar.gz
   name: docopt
   version: 0.6.2
