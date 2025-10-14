@@ -281,6 +281,7 @@ jobs:
           key: env-v2-{{ .Branch }}-{{ .BuildNum }}
           paths:
             - /tmp/templateflow
+            - /opt/conda
 
       - restore_cache:
           keys:
