@@ -297,19 +297,12 @@ jobs:
             datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/anat/*
             datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/dwi/*
             datalad get -J 1 -r -d /tmp/data/ds001771 ds001771/sub-36/fmap/*
-            datalad get -J 1 -r -d /tmp/data/ds001771/derivatives/ ds001771/derivatives/smriprep-0.6.0/*
-            datalad get -J 1 -r -d /tmp/data/ds001771/derivatives/ ds001771/derivatives/freesurfer-6.0.1/sub-36/mri/*
-            datalad get -J 1 -r -d /tmp/data/ds001771/derivatives/ ds001771/derivatives/freesurfer-6.0.1/sub-36/surf/lh.white \
-                                                         ds001771/derivatives/freesurfer-6.0.1/sub-36/surf/rh.white \
-                                                         ds001771/derivatives/freesurfer-6.0.1/sub-36/surf/lh.thickness \
-                                                         ds001771/derivatives/freesurfer-6.0.1/sub-36/surf/rh.thickness
       - run:
           name: Install ds000206
           command: |
             datalad install -r /tmp/data/ds000206 -s https://github.com/nipreps-data/ds000206.git
             datalad update -r --merge -d /tmp/data/ds000206
             datalad get -J 1 -r -d /tmp/data/ds000206/ ds000206/sub-05/*
-            datalad get -J 1 -r -d /tmp/data/ds000206/derivatives/ ds000206/derivatives/freesurfer-6.0.1/sub-05/*
       - save_cache:
           key: data-v0-{{ .Branch }}-{{ .Revision }}
           paths:
