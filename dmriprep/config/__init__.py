@@ -171,12 +171,13 @@ with suppress(Exception):
             if _proc_oc_kbytes.exists():
                 _oc_limit = _proc_oc_kbytes.read_text().strip()
             if _oc_limit in ('0', 'n/a') and Path('/proc/sys/vm/overcommit_ratio').exists():
-                _oc_limit = f"{Path('/proc/sys/vm/overcommit_ratio').read_text().strip()}%"
+                _oc_limit = f'{Path("/proc/sys/vm/overcommit_ratio").read_text().strip()}%'
 
 
 # Debug modes are names that influence the exposure of internal details to
 # the user, either through additional derivatives or increased verbosity
 DEBUG_MODES = ('fieldmaps', 'pdb')
+
 
 class _Config:
     """An abstract class forbidding instantiation."""
@@ -712,9 +713,7 @@ def get(flat=False):
         return settings
 
     return {
-        f'{section}.{k}': v
-        for section, configs in settings.items()
-        for k, v in configs.items()
+        f'{section}.{k}': v for section, configs in settings.items() for k, v in configs.items()
     }
 
 

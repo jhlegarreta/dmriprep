@@ -355,7 +355,7 @@ is ``--output-spaces run`` - the original space and sampling grid of the origina
 Important to note, the ``res-*`` modifier does not define the resolution used for \
 the spatial normalization. To generate no DWI outputs (if that is intended for some reason), \
 use this option without specifying any spatial references. For further details, please check out \
-https://www.nipreps.org/dmriprep/en/{currentv.base_version if is_release else "latest"}/spaces.html""",
+https://www.nipreps.org/dmriprep/en/{currentv.base_version if is_release else 'latest'}/spaces.html""",
     )
     g_conf.add_argument(
         '--dwi2anat-init',
@@ -631,7 +631,6 @@ def parse_args(args=None, namespace=None):
     if config.execution.work_dir is None:
         config.execution.work_dir = Path('work').absolute()
 
-
     # Consistency checks
     force_set = set(config.workflow.force)
     ignore_set = set(config.workflow.ignore)
@@ -743,8 +742,7 @@ applied."""
         from ..utils.bids import validate_input_dir
 
         build_log.info(
-            'Making sure the input data is BIDS compliant (warnings can be ignored in most '
-            'cases).'
+            'Making sure the input data is BIDS compliant (warnings can be ignored in most cases).'
         )
         validate_input_dir(
             config.environment.exec_env,

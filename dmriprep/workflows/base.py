@@ -76,7 +76,7 @@ def init_dmriprep_wf():
                 spaces=config.workflow.spaces.get_fs_spaces(),
                 minimum_fs_version='7.0.0',
             ),
-            name=f"fsdir_run_{config.execution.run_uuid.replace('-', '_')}",
+            name=f'fsdir_run_{config.execution.run_uuid.replace("-", "_")}',
             run_without_submitting=True,
         )
         if config.execution.fs_subjects_dir is not None:
@@ -158,7 +158,6 @@ def init_single_subject_wf(
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.bids import BIDSDataGrabber, BIDSInfo
-    from niworkflows.interfaces.nilearn import NILEARN_VERSION
     from niworkflows.interfaces.utility import KeySelect
     from niworkflows.utils.bids import collect_data
     from niworkflows.utils.spaces import Reference
@@ -228,7 +227,7 @@ It is released under the [CC0]\
     # Make sure we always go through these two checks
     if not anat_only and not subject_data['dwi']:
         raise Exception(
-            f'No DWI data found for participant {subject_id}. ' 'All workflows require DWI images.'
+            f'No DWI data found for participant {subject_id}. All workflows require DWI images.'
         )
 
     dwi_runs = [
@@ -756,9 +755,7 @@ Setting up fieldmap "{estimator.bids_id}" ({estimator.method}) with \
                 from sdcflows.workflows.fit.syn import init_syn_preprocessing_wf
 
                 sources = [str(s.path) for s in estimator.sources if s.suffix in ('dwi', 'b0')]
-                source_meta = [
-                    s.metadata for s in estimator.sources if s.suffix in ('dwi', 'b0')
-                ]
+                source_meta = [s.metadata for s in estimator.sources if s.suffix in ('dwi', 'b0')]
                 syn_preprocessing_wf = init_syn_preprocessing_wf(
                     omp_nthreads=omp_nthreads,
                     debug=config.execution.sloppy,

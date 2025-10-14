@@ -210,7 +210,6 @@ def _create_fs_id(subject_id, session_id=None):
     return subject_id
 
 
-
 def _find_nearest_path(path_dict, input_path):
     """Find the nearest relative path from an input path to a dictionary of paths.
 

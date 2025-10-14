@@ -28,7 +28,6 @@ from nipype.interfaces import utility as niu
 from nipype.pipeline import engine as pe
 
 from dmriprep import config
-from dmriprep.interfaces import DerivativesDataSink
 from dmriprep.utils.misc import estimate_image_mem_usage
 
 DEFAULT_MIN_DWI_SIZE = 7  # 6 DWI directions + 1 b=0, for DTI
@@ -96,9 +95,7 @@ def init_dwi_wf(
         precomputed = {}
     dwi_file = dwi_series[0]
 
-    dmriprep_dir = config.execution.dmriprep_dir
-    omp_nthreads = config.nipype.omp_nthreads
-    all_metadata = [config.execution.layout.get_metadata(file) for file in dwi_series]
+    [config.execution.layout.get_metadata(file) for file in dwi_series]
 
     nvols, mem_gb = estimate_image_mem_usage(dwi_file)
     if nvols <= min_dwi_vols - config.execution.sloppy:
@@ -193,13 +190,11 @@ configured with cubic B-spline interpolation.
     #         ('fmap_id', 'inputnode.fmap_id'),
     #         ('sdc_method', 'inputnode.sdc_method'),
     #     ]),
-    # ])  # fmt:skip
 
     workflow.add_nodes([inputnode])
 
     if config.workflow.level == 'minimal':
         return workflow
-
 
     # from niworkflows.interfaces.reportlets.registration import (
     #     SimpleBeforeAfterRPT as SimpleBeforeAfter,
@@ -210,7 +205,6 @@ configured with cubic B-spline interpolation.
     # from ...interfaces.vectors import CheckGradientTable
     # from .eddy import init_eddy_wf
     # from .outputs import init_dwi_derivatives_wf, init_reportlets_wf
-
 
     # layout = config.execution.layout
 
@@ -497,8 +491,7 @@ def _get_wf_name(filename, prefix='dwi'):
     'dwi_dir_RL_run_01_echo_1_wf'
 
     """
-    from pathlib import Path
 
     fname = Path(filename).name.rpartition('.nii')[0].replace('_dwi', '_wf')
     fname_nosub = '_'.join(fname.split('_')[1:])
-    return f"{prefix}_{fname_nosub.replace('.', '_').replace(' ', '').replace('-', '_')}"
+    return f'{prefix}_{fname_nosub.replace(".", "_").replace(" ", "").replace("-", "_")}'

@@ -35,9 +35,9 @@ a hard-limited memory-scope.
 def build_workflow(config_file, retval):
     """Create the Nipype Workflow that supports the whole execution graph."""
 
-    from niworkflows.utils.misc import check_valid_fs_license
     from niworkflows.reports import generate_reports
     from niworkflows.utils.bids import check_pipeline_version
+    from niworkflows.utils.misc import check_valid_fs_license
 
     from dmriprep import config, data
     from dmriprep.utils.misc import check_deps, fmt_subjects_sessions
@@ -202,7 +202,7 @@ def build_boilerplate(config_file, workflow):
         try:
             check_call(cmd, timeout=10)
         except (FileNotFoundError, CalledProcessError, TimeoutExpired):
-            config.loggers.cli.warning(f"Could not generate CITATION.html file:\n{' '.join(cmd)}")
+            config.loggers.cli.warning(f'Could not generate CITATION.html file:\n{" ".join(cmd)}')
 
         # Generate LaTex file resolving citations
         cmd = [

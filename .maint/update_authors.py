@@ -133,7 +133,7 @@ def get_git_lines(fname='line-contributors.txt'):
 def _namelast(inlist):
     retval = []
     for i in inlist:
-        i['name'] = (f"{i.pop('name', '')} {i.pop('lastname', '')}").strip()
+        i['name'] = (f'{i.pop("name", "")} {i.pop("lastname", "")}').strip()
         if not i['name']:
             i['name'] = i.get('handle', '<Unknown Name>')
         retval.append(i)
@@ -188,7 +188,7 @@ def zenodo(
     misses = set(miss_creators).intersection(miss_contributors)
     if misses:
         print(
-            f"Some people made commits, but are missing in .maint/ files: {', '.join(misses)}",
+            f'Some people made commits, but are missing in .maint/ files: {", ".join(misses)}',
             file=sys.stderr,
         )
 
@@ -268,7 +268,7 @@ def publication(
 
     if misses:
         print(
-            f"Some people made commits, but are missing in .maint/ files: {', '.join(misses)}",
+            f'Some people made commits, but are missing in .maint/ files: {", ".join(misses)}',
             file=sys.stderr,
         )
 
@@ -276,7 +276,10 @@ def publication(
     print(
         '{}.'.format(
             '; '.join(
-                ['{} \\ :sup:`{}`\\ '.format(i['name'], idx) for i, idx in zip(hits, aff_indexes, strict=False)]
+                [
+                    '{} \\ :sup:`{}`\\ '.format(i['name'], idx)
+                    for i, idx in zip(hits, aff_indexes, strict=False)
+                ]
             )
         )
     )

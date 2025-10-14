@@ -86,7 +86,7 @@ def main():
     if dmriprep_wf and config.execution.write_graph:
         dmriprep_wf.write_graph(graph2use='colored', format='svg', simple_form=True)
 
-    exitcode = exitcode or (fmriprep_wf is None) * EX_SOFTWARE
+    exitcode = exitcode or (dmriprep_wf is None) * EX_SOFTWARE
     if exitcode != 0:
         sys.exit(exitcode)
 
@@ -124,7 +124,7 @@ def main():
             if config.environment.exec_env in (
                 'singularity',
                 'docker',
-                'fmriprep-docker',
+                'dmriprep-docker',
             ):
                 boiler_file = Path('<OUTPUT_PATH>') / boiler_file.relative_to(
                     config.execution.output_dir
@@ -154,6 +154,7 @@ def main():
         errno = 0
     finally:
         from niworkflows.reports import generate_reports
+
         from dmriprep.data import load
         from dmriprep.utils.bids import write_bidsignore, write_derivative_description
 
