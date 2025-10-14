@@ -1942,10 +1942,9 @@ packages:
   - pytest-xdist>=2.5 ; extra == 'tests'
   - pytest>=8.1 ; extra == 'tests'
   requires_python: '>=3.10'
-  editable: true
 - pypi: ./
   name: dmriprep
-  version: 25.0.0.dev100+g91754f11e
+  version: 25.0.0.dev103+g895221f66
   sha256: 13d20a8dbd306a9f49911ceb42039b69d5598f4f89affe1364ba07d9dc224ff8
   requires_dist:
   - dipy>=1.8.0
@@ -2026,6 +2025,7 @@ packages:
   - pytest-xdist>=2.5 ; extra == 'tests'
   - pytest>=8.1 ; extra == 'tests'
   requires_python: '>=3.10'
+  editable: true
 - pypi: https://files.pythonhosted.org/packages/a2/55/8f8cab2afd404cf578136ef2cc5dfb50baa1761b68c9da1fb1e4eed343c9/docopt-0.6.2.tar.gz
   name: docopt
   version: 0.6.2

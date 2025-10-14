@@ -28,6 +28,7 @@ jobs:
         with:
           cache: true
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+          frozen: true
           environments: docs
 
       - name: Build documentation
