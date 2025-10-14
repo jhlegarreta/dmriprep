@@ -22,10 +22,92 @@
 #
 """Utilities to handle BIDS inputs."""
 
+from __future__ import annotations
+
 import json
 import os
+import re
 import sys
+from collections import defaultdict
+from functools import cache
 from pathlib import Path
+
+from bids.layout import BIDSLayout
+from bids.utils import listify
+
+
+@cache
+def _get_layout(derivatives_dir: Path) -> BIDSLayout:
+    import niworkflows.data
+
+    return BIDSLayout(
+        derivatives_dir, config=[niworkflows.data.load('nipreps.json')], validate=False
+    )
+
+
+def collect_derivatives(
+    derivatives_dir: Path,
+    entities: dict,
+    fieldmap_id: str | None = None,
+    spec: dict | None = None,
+    patterns: list[str] | None = None,
+):
+    """Gather existing derivatives for diffusion preprocessing."""
+
+    if patterns is not None:
+        del patterns
+
+    if spec is None:
+        spec = {
+            'baseline': {
+                'dwi_ref': {'suffix': 'epiref', 'datatype': 'dwi'},
+                'dwi_mask': {'suffix': 'mask', 'datatype': 'dwi', 'desc': 'brain'},
+            },
+            'transforms': {},
+        }
+
+    derivs_cache: dict[str, list | str | dict] = {}
+    layout = _get_layout(Path(derivatives_dir))
+
+    for key, query in spec['baseline'].items():
+        item = layout.get(return_type='filename', **{**entities, **query})
+        if not item:
+            continue
+        derivs_cache[key] = item[0] if len(item) == 1 else item
+
+    transforms_cache: dict[str, list | str] = {}
+    for name, query in spec.get('transforms', {}).items():
+        if name == 'dwi2fmap' and fieldmap_id:
+            query = {**query, 'to': re.sub(r'[^a-zA-Z0-9]', '', fieldmap_id)}
+        item = layout.get(return_type='filename', **{**entities, **query})
+        if not item:
+            continue
+        transforms_cache[name] = item[0] if len(item) == 1 else item
+
+    if transforms_cache:
+        derivs_cache['transforms'] = transforms_cache
+
+    return derivs_cache
+
+
+def extract_entities(file_list):
+    """Return a dictionary of common entities for a collection of files."""
+
+    from bids.layout import parse_file_entities
+
+    entities: dict[str, list] = defaultdict(list)
+    for entity, value in [
+        pair for fname in listify(file_list) for pair in parse_file_entities(fname).items()
+    ]:
+        entities[entity].append(value)
+
+    def _unique(values):
+        values = sorted(set(values))
+        if len(values) == 1:
+            return values[0]
+        return values
+
+    return {key: _unique(val) for key, val in entities.items()}
 
 
 def write_derivative_description(bids_dir, deriv_dir):
@@ -72,7 +154,7 @@ def write_derivative_description(bids_dir, deriv_dir):
         json.dump(desc, fobj, indent=4)
 
 
-def validate_input_dir(exec_env, bids_dir, participant_label):
+def validate_input_dir(exec_env, bids_dir, participant_label, need_T1w=True):
     # Ignore issues and warnings that should not influence dMRIPrep
     import subprocess
     import tempfile
@@ -115,7 +197,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
             'MISSING_TSV_COLUMN_EEG_ELECTRODES',
             'MISSING_SESSION',
         ],
-        'error': ['NO_T1W'],
+        'error': ['NO_T1W'] if need_T1w else [],
         'ignoredFiles': ['/dataset_description.json', '/participants.tsv'],
     }
     # Limit validation only to data from requested participants
