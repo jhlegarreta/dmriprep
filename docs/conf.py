@@ -255,4 +255,3 @@ intersphinx_mapping = {
     'smriprep': ('https://www.nipreps.org/smriprep/', None),
     'templateflow': ('https://www.templateflow.org/python-client', None),
 }
-
