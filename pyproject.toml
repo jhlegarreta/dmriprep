@@ -237,7 +237,6 @@ dmriprep = { path = ".", editable = false }
 
 [tool.pixi.feature.documentation.pypi-dependencies]
 sphinx-autobuild = "*"
-sphinxcontrib-versioning = { git = "git+https://github.com/rwblair/sphinxcontrib-versioning.git", rev = "39b40b0b84bf872fc398feff05344051bbce0f63"}
 
 [tool.pixi.feature.documentation.activation.env]
 PYTHONPATH = "$(pwd)"
@@ -255,11 +254,6 @@ depends-on = ["update-version"]
 description = "Build the HTML documentation with Sphinx."
 cwd = "docs"
 cmd = 'make html'
-depends-on = ["update-version"]
-
-[tool.pixi.feature.documentation.tasks.build-versioneddocs]
-description = "Build the HTML documentation with Sphinx."
-cmd = 'make -f ./docs/Makefile versioned'
 depends-on = ["update-version"]
 
 [tool.pixi.feature.documentation.tasks.docs]

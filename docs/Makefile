@@ -6,7 +6,6 @@ SPHINXOPTS    ?= --keep-going -n
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      ?= _build
-CURBRANCH     ?= master
 PYTHONPATH    ?= $(PWD)
 
 # User-friendly check for sphinx-build
@@ -181,5 +180,3 @@ pseudoxml:
 	@echo
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
 
-versioned:
-	PYTHONPATH=$(PYTHONPATH) sphinx-versioning -vv -l ./docs/conf.py build -r $(CURBRANCH) ./docs/ docs/$(BUILDDIR)/html/
