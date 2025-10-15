@@ -21,6 +21,7 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """Utilities to operate on diffusion gradients."""
+
 from itertools import permutations
 from pathlib import Path
 
@@ -401,7 +402,7 @@ def normalize_gradients(
     # Ensure rounding bvals doesn't change the number of b0s
     rounded_b0s = bvals == 0
     if not np.all(b0s == rounded_b0s):
-        msg = f"Inconsistent b0s before ({b0s.sum()}) and after rounding ({rounded_b0s.sum()})."
+        msg = f'Inconsistent b0s before ({b0s.sum()}) and after rounding ({rounded_b0s.sum()}).'
         if raise_error:
             raise ValueError(msg)
         config.loggers.cli.warning(msg)

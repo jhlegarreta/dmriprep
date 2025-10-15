@@ -150,9 +150,9 @@ class SubjectSummary(SummaryInterface):
 
 class DiffusionSummaryInputSpec(BaseInterfaceInputSpec):
     pe_direction = traits.Enum(
-        None, "i", "i-", "j", "j-", "k", "k-", desc="Phase-encoding direction detected"
+        None, 'i', 'i-', 'j', 'j-', 'k', 'k-', desc='Phase-encoding direction detected'
     )
-    shell_dist = traits.Dict(mandatory=True, desc="Shell distribution")
+    shell_dist = traits.Dict(mandatory=True, desc='Shell distribution')
 
 
 class DiffusionSummary(SummaryInterface):
@@ -161,14 +161,11 @@ class DiffusionSummary(SummaryInterface):
     def _generate_segment(self):
         pe_direction = self.inputs.pe_direction
         shell_dist = self.inputs.shell_dist
-        shell_dist_text = ", ".join(
-            f"{shell_dist[key]} directions at b={key} s/mm<sup>2</sup>"
-            for key in shell_dist
+        shell_dist_text = ', '.join(
+            f'{shell_dist[key]} directions at b={key} s/mm<sup>2</sup>' for key in shell_dist
         )
 
-        return DIFFUSION_TEMPLATE.format(
-            pe_direction=pe_direction, shell_dist=shell_dist_text
-        )
+        return DIFFUSION_TEMPLATE.format(pe_direction=pe_direction, shell_dist=shell_dist_text)
 
 
 class AboutSummaryInputSpec(BaseInterfaceInputSpec):

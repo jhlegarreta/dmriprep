@@ -121,9 +121,9 @@ class CheckGradientTable(SimpleInterface):
         self._results['full_sphere'] = np.all(pole == 0.0)
         self._results['b0_mask'] = table.b0mask.tolist()
         self._results['b0_ixs'] = np.where(table.b0mask)[0].tolist()
-        self._results["num_shells"] = len(table.count_shells)
-        self._results["shell_dist"] = table.count_shells
-        self._results["b0_ixs"] = np.where(table.b0mask)[0].tolist()
+        self._results['num_shells'] = len(table.count_shells)
+        self._results['shell_dist'] = table.count_shells
+        self._results['b0_ixs'] = np.where(table.b0mask)[0].tolist()
 
         cwd = Path(runtime.cwd).absolute()
         if rasb_file is None:
