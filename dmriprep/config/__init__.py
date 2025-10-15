@@ -227,7 +227,12 @@ class _Config:
             if callable(getattr(cls, k)):
                 continue
             if k in cls._paths:
-                v = str(v)
+                if isinstance(v, list | tuple):
+                    v = [str(val) for val in v]
+                elif isinstance(v, dict):
+                    v = {key: str(val) for key, val in v.items()}
+                else:
+                    v = str(v)
             if isinstance(v, _SRs):
                 v = ' '.join([str(s) for s in v.references]) or None
             if isinstance(v, _Ref):
@@ -351,8 +356,6 @@ class nipype(_Config):
 class execution(_Config):
     """Configure run-level settings."""
 
-    anat_derivatives = None
-    """A path where anatomical derivatives are found to fast-track *sMRIPrep*."""
     bids_database_dir = None
     """Path to the directory containing SQLite database indices for the input BIDS dataset."""
     bids_dir = None
@@ -416,7 +419,6 @@ class execution(_Config):
     _layout = None
 
     _paths = (
-        'anat_derivatives',
         'bids_database_dir',
         'bids_dir',
         'derivatives',
