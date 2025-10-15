@@ -521,12 +521,17 @@ class workflow(_Config):
 
     anat_only = False
     """Execute the anatomical preprocessing only."""
+    cifti_output = None
+    """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
     dwi2anat_dof = None
     """Degrees of freedom of the DWI-to-anatomical registration steps."""
     dwi2anat_init = 'auto'
     """Method of initial DWI to anatomical coregistration. If `auto`, a T2w image is used
     if available, otherwise the T1w image. `t1w` forces use of the T1w, `t2w` forces use of
     the T2w, and `header` uses the DWI header information without an initial registration."""
+    fallback_total_readout_time = None
+    """Infer the total readout time if unavailable from authoritative metadata.
+    This may be a number or the string "estimated"."""
     fmap_bspline = None
     """Regularize fieldmaps with a field of B-Spline basis."""
     fmap_demean = None
