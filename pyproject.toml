@@ -295,6 +295,9 @@ dmriprep = { path = ".", editable = true }
 [tool.pixi.feature.production.pypi-dependencies]
 dmriprep = { path = ".", editable = false }
 
+[tool.pixi.feature.production.dependencies]
+pandoc = ">=3.8.2,<4"
+
 [tool.pixi.environments]
 # Local installs will use editable
 default = { features = ["editable"], solve-group = "default" }

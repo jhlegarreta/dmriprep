@@ -227,7 +227,12 @@ class _Config:
             if callable(getattr(cls, k)):
                 continue
             if k in cls._paths:
-                v = str(v)
+                if isinstance(v, list | tuple):
+                    v = [str(val) for val in v]
+                elif isinstance(v, dict):
+                    v = {key: str(val) for key, val in v.items()}
+                else:
+                    v = str(v)
             if isinstance(v, _SRs):
                 v = ' '.join([str(s) for s in v.references]) or None
             if isinstance(v, _Ref):
@@ -351,8 +356,6 @@ class nipype(_Config):
 class execution(_Config):
     """Configure run-level settings."""
 
-    anat_derivatives = None
-    """A path where anatomical derivatives are found to fast-track *sMRIPrep*."""
     bids_database_dir = None
     """Path to the directory containing SQLite database indices for the input BIDS dataset."""
     bids_dir = None
@@ -416,7 +419,6 @@ class execution(_Config):
     _layout = None
 
     _paths = (
-        'anat_derivatives',
         'bids_database_dir',
         'bids_dir',
         'derivatives',
@@ -519,12 +521,17 @@ class workflow(_Config):
 
     anat_only = False
     """Execute the anatomical preprocessing only."""
+    cifti_output = None
+    """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
     dwi2anat_dof = None
     """Degrees of freedom of the DWI-to-anatomical registration steps."""
     dwi2anat_init = 'auto'
     """Method of initial DWI to anatomical coregistration. If `auto`, a T2w image is used
     if available, otherwise the T1w image. `t1w` forces use of the T1w, `t2w` forces use of
     the T2w, and `header` uses the DWI header information without an initial registration."""
+    fallback_total_readout_time = None
+    """Infer the total readout time if unavailable from authoritative metadata.
+    This may be a number or the string "estimated"."""
     fmap_bspline = None
     """Regularize fieldmaps with a field of B-Spline basis."""
     fmap_demean = None

@@ -63,7 +63,7 @@ def build_workflow(config_file, retval):
     build_log.log(25, f'\n{" " * 9}'.join(banner))
 
     # warn if older results exist: check for dataset_description.json in output folder
-    msg = check_pipeline_version('dMRIPrep', version, dmriprep_dir / 'dataset_description.json')
+    msg = check_pipeline_version(version, dmriprep_dir / 'dataset_description.json')
     if msg is not None:
         build_log.warning(msg)
 
