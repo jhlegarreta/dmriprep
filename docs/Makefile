@@ -2,12 +2,11 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    =
+SPHINXOPTS    ?= --keep-going -n
 SPHINXBUILD   = sphinx-build
 PAPER         =
-BUILDDIR      = _build
-CURBRANCH     = master
-PYTHONPATH    = $(PWD)
+BUILDDIR      ?= _build
+PYTHONPATH    ?= $(PWD)
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -181,5 +180,3 @@ pseudoxml:
 	@echo
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
 
-versioned:
-	PYTHONPATH=$(PYTHONPATH) sphinx-versioning -vv -l ./docs/conf.py build -r $(CURBRANCH) ./docs/ docs/$(BUILDDIR)/html/

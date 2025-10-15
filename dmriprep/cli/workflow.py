@@ -1,7 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 #
-# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+# Copyright The NiPreps Developers <nipreps@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,109 +34,133 @@ a hard-limited memory-scope.
 
 def build_workflow(config_file, retval):
     """Create the Nipype Workflow that supports the whole execution graph."""
-    from niworkflows.utils.bids import collect_participants, check_pipeline_version
+
     from niworkflows.reports import generate_reports
-    from .. import config
-    from ..utils.misc import check_deps
-    from ..workflows.base import init_dmriprep_wf
+    from niworkflows.utils.bids import check_pipeline_version
+    from niworkflows.utils.misc import check_valid_fs_license
+
+    from dmriprep import config, data
+    from dmriprep.utils.misc import check_deps, fmt_subjects_sessions
+    from dmriprep.workflows.base import init_dmriprep_wf
 
     config.load(config_file)
     build_log = config.loggers.workflow
 
-    output_dir = config.execution.output_dir
+    dmriprep_dir = config.execution.dmriprep_dir
     version = config.environment.version
 
-    retval["return_code"] = 1
-    retval["workflow"] = None
+    retval['return_code'] = 1
+    retval['workflow'] = None
+
+    banner = [f'Running dMRIPrep version {version}']
+    notice_path = data.load.readable('NOTICE')
+    if notice_path.exists():
+        banner[0] += '\n'
+        banner += [f'License NOTICE {"#" * 50}']
+        banner += [f'dMRIPrep {version}']
+        banner += notice_path.read_text().splitlines(keepends=False)[1:]
+        banner += ['#' * len(banner[1])]
+    build_log.log(25, f'\n{" " * 9}'.join(banner))
 
     # warn if older results exist: check for dataset_description.json in output folder
-    msg = check_pipeline_version(
-        version, output_dir / "dmriprep" / "dataset_description.json"
-    )
+    msg = check_pipeline_version(version, dmriprep_dir / 'dataset_description.json')
     if msg is not None:
         build_log.warning(msg)
 
-    # Please note this is the input folder's dataset_description.json
-    dset_desc_path = config.execution.bids_dir / "dataset_description.json"
-    if dset_desc_path.exists():
-        from hashlib import sha256
-
-        desc_content = dset_desc_path.read_bytes()
-        config.execution.bids_description_hash = sha256(desc_content).hexdigest()
-
-    # First check that bids_dir looks like a BIDS folder
-    subject_list = collect_participants(
-        config.execution.layout, participant_label=config.execution.participant_label
-    )
-
     # Called with reports only
     if config.execution.reports_only:
-        from pkg_resources import resource_filename as pkgrf
-
         build_log.log(
-            25, "Running --reports-only on participants %s", ", ".join(subject_list)
+            25,
+            'Running --reports-only on %s',
+            fmt_subjects_sessions(config.execution.processing_groups),
         )
-        retval["return_code"] = generate_reports(
-            subject_list,
-            config.execution.output_dir,
+        session_list = config.execution.session_label
+        if not session_list:
+            session_list = (
+                config.execution.bids_filters.get('bold', {}).get('session')
+                if config.execution.bids_filters
+                else None
+            )
+
+        failed_reports = generate_reports(
+            config.execution.participant_label,
+            config.execution.dmriprep_dir,
             config.execution.run_uuid,
-            config=pkgrf("dmriprep", "config/reports-spec.yml"),
-            packagename="dmriprep",
+            session_list=session_list,
         )
+        if failed_reports:
+            config.loggers.cli.error(
+                f'Report generation was not successful for the following participants : {", ".join(failed_reports)}.'
+            )
+
+        retval['return_code'] = len(failed_reports)
         return retval
 
     # Build main workflow
-    INIT_MSG = """
-    Running dMRIPrep version {version}:
-      * BIDS dataset path: {bids_dir}.
-      * Participant list: {subject_list}.
-      * Run identifier: {uuid}.
-      * Output spaces: {spaces}.
-    """.format
-    build_log.log(
-        25,
-        INIT_MSG(
-            version=config.environment.version,
-            bids_dir=config.execution.bids_dir,
-            subject_list=subject_list,
-            uuid=config.execution.run_uuid,
-            spaces=config.execution.output_spaces,
-        ),
-    )
+    init_msg = [
+        "Building dMRIPrep's workflow:",
+        f'BIDS dataset path: {config.execution.bids_dir}.',
+        f'Participants and sessions: {fmt_subjects_sessions(config.execution.processing_groups)}.',
+        f'Run identifier: {config.execution.run_uuid}.',
+        f'Output spaces: {config.execution.output_spaces}.',
+    ]
 
-    retval["workflow"] = init_dmriprep_wf()
+    if config.execution.derivatives:
+        init_msg += [f'Searching for derivatives: {list(config.execution.derivatives.values())}.']
+
+    if config.execution.fs_subjects_dir:
+        init_msg += [f"Pre-run FreeSurfer's SUBJECTS_DIR: {config.execution.fs_subjects_dir}."]
+
+    build_log.log(25, f'\n{" " * 11}* '.join(init_msg))
+
+    retval['workflow'] = init_dmriprep_wf()
+
+    # Check for FS license after building the workflow
+    if not check_valid_fs_license():
+        from ..utils.misc import fips_enabled
+
+        if fips_enabled():
+            build_log.critical(
+                """\
+ERROR: Federal Information Processing Standard (FIPS) mode is enabled on your system. \
+FreeSurfer (and thus dMRIPrep) cannot be used in FIPS mode. \
+Contact your system administrator for assistance."""
+            )
+        else:
+            build_log.critical(
+                """\
+ERROR: a valid license file is required for FreeSurfer to run. dMRIPrep looked for an existing \
+license file at several paths, in this order: 1) command line argument ``--fs-license-file``; \
+2) ``$FS_LICENSE`` environment variable; and 3) the ``$FREESURFER_HOME/license.txt`` path. Get it \
+(for free) by registering at https://surfer.nmr.mgh.harvard.edu/registration.html"""
+            )
+        retval['return_code'] = 126  # 126 == Command invoked cannot execute.
+        return retval
 
     # Check workflow for missing commands
-    missing = check_deps(retval["workflow"])
+    missing = check_deps(retval['workflow'])
     if missing:
-        build_log.critical(
-            "Cannot run dMRIPrep. Missing dependencies:%s",
-            "\n\t* %s".join(
-                ["{} (Interface: {})".format(cmd, iface) for iface, cmd in missing]
-            ),
-        )
-        retval["return_code"] = 127  # 127 == command not found.
+        deps_list = '\n'.join([f'\t* {cmd} (Interface: {iface})' for iface, cmd in missing])
+        build_log.critical(f'Cannot run dMRIPrep. Missing dependencies:\n{deps_list}')
+        retval['return_code'] = 127  # 127 == command not found.
         return retval
 
     config.to_filename(config_file)
     build_log.info(
-        "dMRIPrep workflow graph with %d nodes built successfully.",
-        len(retval["workflow"]._get_all_nodes()),
+        f'dMRIPrep workflow graph with {len(retval["workflow"]._get_all_nodes())} nodes built successfully.'
     )
-    retval["return_code"] = 0
+    retval['return_code'] = 0
     return retval
 
 
 def build_boilerplate(config_file, workflow):
     """Write boilerplate in an isolated process."""
-    from .. import config
+    from dmriprep import config
 
     config.load(config_file)
-    logs_path = config.execution.output_dir / "dmriprep" / "logs"
+    logs_path = config.execution.dmriprep_dir / 'logs'
     boilerplate = workflow.visit_desc()
-    citation_files = {
-        ext: logs_path / ("CITATION.%s" % ext) for ext in ("bib", "tex", "md", "html")
-    }
+    citation_files = {ext: logs_path / f'CITATION.{ext}' for ext in ('bib', 'tex', 'md', 'html')}
 
     if boilerplate:
         # To please git-annex users and also to guarantee consistency
@@ -148,56 +172,51 @@ def build_boilerplate(config_file, workflow):
             except FileNotFoundError:
                 pass
 
-    citation_files["md"].write_text(boilerplate)
+    citation_files['md'].write_text(boilerplate)
 
-    if not config.execution.md_only_boilerplate and citation_files["md"].exists():
-        from subprocess import check_call, CalledProcessError, TimeoutExpired
-        from pkg_resources import resource_filename as pkgrf
-        from shutil import copyfile
+    if not config.execution.md_only_boilerplate and citation_files['md'].exists():
+        from subprocess import CalledProcessError, TimeoutExpired, check_call
+
+        from dmriprep import data
+
+        bib_text = data.load.readable('boilerplate.bib').read_text()
+        citation_files['bib'].write_text(
+            bib_text.replace('dMRIPrep <version>', f'dMRIPrep {config.environment.version}')
+        )
 
         # Generate HTML file resolving citations
         cmd = [
-            "pandoc",
-            "-s",
-            "--bibliography",
-            pkgrf("dmriprep", "data/boilerplate.bib"),
-            "--citeproc",
-            "--metadata",
+            'pandoc',
+            '-s',
+            '--bibliography',
+            str(citation_files['bib']),
+            '--citeproc',
+            '--metadata',
             'pagetitle="dMRIPrep citation boilerplate"',
-            str(citation_files["md"]),
-            "-o",
-            str(citation_files["html"]),
+            str(citation_files['md']),
+            '-o',
+            str(citation_files['html']),
         ]
 
-        config.loggers.cli.info(
-            "Generating an HTML version of the citation boilerplate..."
-        )
+        config.loggers.cli.info('Generating an HTML version of the citation boilerplate...')
         try:
             check_call(cmd, timeout=10)
         except (FileNotFoundError, CalledProcessError, TimeoutExpired):
-            config.loggers.cli.warning(
-                "Could not generate CITATION.html file:\n%s", " ".join(cmd)
-            )
+            config.loggers.cli.warning(f'Could not generate CITATION.html file:\n{" ".join(cmd)}')
 
         # Generate LaTex file resolving citations
         cmd = [
-            "pandoc",
-            "-s",
-            "--bibliography",
-            pkgrf("dmriprep", "data/boilerplate.bib"),
-            "--natbib",
-            str(citation_files["md"]),
-            "-o",
-            str(citation_files["tex"]),
+            'pandoc',
+            '-s',
+            '--bibliography',
+            str(citation_files['bib']),
+            '--natbib',
+            str(citation_files['md']),
+            '-o',
+            str(citation_files['tex']),
         ]
-        config.loggers.cli.info(
-            "Generating a LaTeX version of the citation boilerplate..."
-        )
+        config.loggers.cli.info('Generating a LaTeX version of the citation boilerplate...')
         try:
             check_call(cmd, timeout=10)
         except (FileNotFoundError, CalledProcessError, TimeoutExpired):
-            config.loggers.cli.warning(
-                "Could not generate CITATION.tex file:\n%s", " ".join(cmd)
-            )
-        else:
-            copyfile(pkgrf("dmriprep", "data/boilerplate.bib"), citation_files["bib"])
+            config.loggers.cli.warning(f'Could not generate CITATION.tex file:\n{" ".join(cmd)}')

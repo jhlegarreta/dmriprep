@@ -1,3 +1,5 @@
+*/_version.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -107,3 +109,6 @@ ENV/
 
 #kubernetes stuff
 kubernetes/jobs/
+# pixi environments
+.pixi/*
+!.pixi/config.toml

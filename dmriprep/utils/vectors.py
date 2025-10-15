@@ -21,12 +21,15 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """Utilities to operate on diffusion gradients."""
-from .. import config
-from pathlib import Path
+
 from itertools import permutations
+from pathlib import Path
+
 import nibabel as nb
 import numpy as np
 from dipy.core.gradients import round_bvals
+
+from .. import config
 
 B0_THRESHOLD = 50
 BVEC_NORM_EPSILON = 0.1
@@ -36,16 +39,16 @@ class DiffusionGradientTable:
     """Data structure for DWI gradients."""
 
     __slots__ = [
-        "_affine",
-        "_b0_thres",
-        "_b_scale",
-        "_bvals",
-        "_bvec_norm_epsilon",
-        "_bvecs",
-        "_gradients",
-        "_normalized",
-        "_raise_inconsistent",
-        "_transforms",
+        '_affine',
+        '_b0_thres',
+        '_b_scale',
+        '_bvals',
+        '_bvec_norm_epsilon',
+        '_bvecs',
+        '_gradients',
+        '_normalized',
+        '_raise_inconsistent',
+        '_transforms',
     ]
 
     def __init__(
@@ -161,39 +164,39 @@ class DiffusionGradientTable:
 
     @affine.setter
     def affine(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             dwi_file = nb.load(str(value))
             self._affine = dwi_file.affine.copy()
             return
-        if hasattr(value, "affine"):
+        if hasattr(value, 'affine'):
             self._affine = value.affine
         self._affine = np.array(value)
 
     @gradients.setter
     def gradients(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             value = np.loadtxt(value, skiprows=1)
         self._gradients = value
 
     @bvecs.setter
     def bvecs(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             value = np.loadtxt(str(value)).T
         else:
-            value = np.array(value, dtype="float32")
+            value = np.array(value, dtype='float32')
 
         # Correct any b0's in bvecs misstated as 10's.
         value[np.any(abs(value) >= 10, axis=1)] = np.zeros(3)
         if self.bvals is not None and value.shape[0] != self.bvals.shape[0]:
-            raise ValueError("The number of b-vectors and b-values do not match")
+            raise ValueError('The number of b-vectors and b-values do not match')
         self._bvecs = value
 
     @bvals.setter
     def bvals(self, value):
-        if isinstance(value, (str, Path)):
+        if isinstance(value, str | Path):
             value = np.loadtxt(str(value)).flatten()
         if self.bvecs is not None and value.shape[0] != self.bvecs.shape[0]:
-            raise ValueError("The number of b-vectors and b-values do not match")
+            raise ValueError('The number of b-vectors and b-values do not match')
         self._bvals = np.array(value)
 
     @property
@@ -244,9 +247,7 @@ class DiffusionGradientTable:
                 bvals = ras_b_mat[:, 3]
                 bvecs = ras_b_mat[:, 0:3]
             if len(self._bvals[self._bvals > self._b0_thres]) != len(affines):
-                raise ValueError(
-                    "Affine transformations do not correspond to gradients"
-                )
+                raise ValueError('Affine transformations do not correspond to gradients')
 
         # Build gradient table object
         gt = gradient_table_from_bvals_bvecs(bvals, bvecs, b0_threshold=self._b0_thres)
@@ -261,12 +262,10 @@ class DiffusionGradientTable:
         if self.bvecs is None or self.bvals is None:
             if self.affine is None:
                 raise TypeError(
-                    "Cannot generate b-vectors & b-values in image coordinates. "
+                    'Cannot generate b-vectors & b-values in image coordinates. '
                     "Please set the corresponding DWI image's affine matrix."
                 )
-            self._bvecs = bvecs2ras(
-                np.linalg.inv(self.affine), self.gradients[..., :-1]
-            )
+            self._bvecs = bvecs2ras(np.linalg.inv(self.affine), self.gradients[..., :-1])
             self._bvals = self.gradients[..., -1].flatten()
 
     @property
@@ -278,27 +277,25 @@ class DiffusionGradientTable:
 
         """
         self.generate_rasb()
-        return calculate_pole(
-            self.gradients[..., :-1], bvec_norm_epsilon=self._bvec_norm_epsilon
-        )
+        return calculate_pole(self.gradients[..., :-1], bvec_norm_epsilon=self._bvec_norm_epsilon)
 
-    def to_filename(self, filename, filetype="rasb"):
+    def to_filename(self, filename, filetype='rasb'):
         """Write files (RASB, bvecs/bvals) to a given path."""
-        if filetype.lower() == "rasb":
+        if filetype.lower() == 'rasb':
             self.generate_rasb()
             np.savetxt(
                 str(filename),
                 self.gradients,
-                delimiter="\t",
-                header="\t".join("RASB"),
-                fmt=["%.8f"] * 3 + ["%g"],
+                delimiter='\t',
+                header='\t'.join('RASB'),
+                fmt=['%.8f'] * 3 + ['%g'],
             )
-        elif filetype.lower() == "fsl":
+        elif filetype.lower() == 'fsl':
             self.generate_vecval()
-            np.savetxt("%s.bvec" % filename, self.bvecs.T, fmt="%.6f")
-            np.savetxt("%s.bval" % filename, self.bvals, fmt="%.6f")
+            np.savetxt(f'{filename}.bvec', self.bvecs.T, fmt='%.6f')
+            np.savetxt(f'{filename}.bval', self.bvals, fmt='%.6f')
         else:
-            raise ValueError('Unknown filetype "%s"' % filetype)
+            raise ValueError(f'Unknown filetype "{filetype}"')
 
 
 def normalize_gradients(
@@ -338,41 +335,42 @@ def normalize_gradients(
     >>> bvals = np.array([1000] * bvecs.shape[0])
     >>> normalize_gradients(bvecs, bvals, 50, raise_error=True)
     Traceback (most recent call last):
-    ValueError:
+        ...
+    ValueError: Inconsistent bvals and bvecs (0, 1 low-b, respectively).
 
     >>> bvals[0] = 0.0
     >>> norm_vecs, norm_vals = normalize_gradients(bvecs, bvals)
-    >>> np.all(norm_vecs[0] == 0)
+    >>> bool(np.all(norm_vecs[0] == 0))
     True
 
     >>> norm_vecs[1, ...].tolist()
     [1.0, 0.0, 0.0]
 
-    >>> norm_vals[0]
+    >>> int(norm_vals[0])
     0
-    >>> norm_vals[1]
+    >>> int(norm_vals[1])
     4000
-    >>> norm_vals[-2]
+    >>> int(norm_vals[-2])
     600
-    >>> norm_vals[-1]
+    >>> int(norm_vals[-1])
     3000
 
     >>> norm_vecs, norm_vals = normalize_gradients(bvecs, bvals, b_scale=False)
-    >>> norm_vals[0]
+    >>> int(norm_vals[0])
     0
-    >>> np.all(norm_vals[1:] == 1000)
+    >>> bool(np.all(norm_vals[1:] == 1000))
     True
 
     """
-    bvals = np.array(bvals, dtype="float32")
-    bvecs = np.array(bvecs, dtype="float32")
+    bvals = np.array(bvals, dtype='float32')
+    bvecs = np.array(bvecs, dtype='float32')
 
     b0s = bvals < b0_threshold
     b0_vecs = np.linalg.norm(bvecs, axis=1) < bvec_norm_epsilon
 
     # Check for bval-bvec discrepancy.
     if not np.all(b0s == b0_vecs):
-        msg = f"Inconsistent bvals and bvecs ({b0s.sum()}, {b0_vecs.sum()} low-b, respectively)."
+        msg = f'Inconsistent bvals and bvecs ({b0s.sum()}, {b0_vecs.sum()} low-b, respectively).'
         if raise_error:
             raise ValueError(msg)
         config.loggers.cli.warning(msg)
@@ -389,7 +387,7 @@ def normalize_gradients(
 
     # Rescale b-vecs, skipping b0's, on the appropriate axis to unit-norm length.
     bvecs[~b0s] /= np.linalg.norm(bvecs[~b0s], axis=1)[..., np.newaxis]
-    return bvecs, bvals.astype("uint16")
+    return bvecs, bvals.astype('uint16')
 
 
 def calculate_pole(bvecs, bvec_norm_epsilon=BVEC_NORM_EPSILON):
@@ -406,7 +404,7 @@ def calculate_pole(bvecs, bvec_norm_epsilon=BVEC_NORM_EPSILON):
     -------
     pole : numpy.ndarray
         A zero-vector if ``bvecs`` covers the full sphere, and the unit vector
-        locating the hemisphere pole othewise.
+        locating the hemisphere pole otherwise.
 
     Examples
     --------
@@ -425,7 +423,7 @@ def calculate_pole(bvecs, bvec_norm_epsilon=BVEC_NORM_EPSILON):
     https://rstudio-pubs-static.s3.amazonaws.com/27121_a22e51b47c544980bad594d5e0bb2d04.html
 
     """
-    bvecs = np.array(bvecs, dtype="float32")  # Normalize inputs
+    bvecs = np.array(bvecs, dtype='float32')  # Normalize inputs
     b0s = np.linalg.norm(bvecs, axis=1) < bvec_norm_epsilon
 
     bvecs = bvecs[~b0s]
@@ -497,7 +495,7 @@ def bvecs2ras(affine, bvecs, norm=True, bvec_norm_epsilon=0.2):
     if affine.shape == (4, 4):
         affine = affine[:3, :3]
 
-    bvecs = np.array(bvecs, dtype="float32")  # Normalize inputs
+    bvecs = np.array(bvecs, dtype='float32')  # Normalize inputs
     rotated_bvecs = affine[np.newaxis, ...].dot(bvecs.T)[0].T
     if norm is True:
         norms_bvecs = np.linalg.norm(rotated_bvecs, axis=1)
@@ -510,29 +508,3 @@ def bvecs2ras(affine, bvecs, norm=True, bvec_norm_epsilon=0.2):
 def rasb_dwi_length_check(dwi_file, rasb_file):
     """Check the number of encoding vectors and number of orientations in the DWI file."""
     return nb.load(dwi_file).shape[-1] == len(np.loadtxt(rasb_file, skiprows=1))
-
-
-def b0mask_from_data(dwi_file, mask_file, z_thres=3.0):
-    """
-    Evaluate B0 locations relative to mean signal variation.
-
-    Standardizes (z-score) the average DWI signal within mask and threshold.
-    This is a data-driven way of estimating which volumes in the DWI dataset are
-    really encoding *low-b* acquisitions.
-
-    Parameters
-    ----------
-    dwi_file : :obj:`str`
-        File path to the diffusion-weighted image series.
-    mask_file : :obj:`str`
-        File path to a mask corresponding to the DWI file.
-    z_thres : :obj:`float`
-        The z-value to consider a volume as a *low-b* orientation.
-
-    """
-    data = np.asanyarray(nb.load(dwi_file).dataobj)
-    mask = np.asanyarray(nb.load(mask_file).dataobj) > 0.5
-    signal_means = np.median(data[mask, np.newaxis], axis=0)
-    zscored_means = signal_means - np.median(signal_means)
-    zscored_means /= zscored_means.std()
-    return zscored_means > z_thres

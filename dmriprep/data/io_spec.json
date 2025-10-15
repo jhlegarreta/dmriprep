@@ -1,0 +1,58 @@
+{
+  "queries": {
+    "baseline": {
+      "hmc": {
+        "datatype": "dwi",
+        "space": null,
+        "desc": "hmc",
+        "suffix": "dwiref",
+        "extension": [
+          ".nii.gz",
+          ".nii"
+        ]
+      },
+      "coreg": {
+        "datatype": "dwi",
+        "space": null,
+        "desc": "coreg",
+        "suffix": "dwiref",
+        "extension": [
+          ".nii.gz",
+          ".nii"
+        ]
+      }
+    },
+    "transforms": {
+      "hmc": {
+        "datatype": "dwi",
+        "from": "orig",
+        "to": "dwiref",
+        "mode": "image",
+        "suffix": "xfm",
+        "extension": ".txt"
+      },
+      "dwiref2anat": {
+        "datatype": "dwi",
+        "from": "dwiref",
+        "to": ["anat", "T1w", "T2w"],
+        "mode": "image",
+        "suffix": "xfm",
+        "extension": ".txt"
+      },
+      "dwiref2fmap": {
+        "datatype": "dwi",
+        "from": "dwiref",
+        "mode": "image",
+        "suffix": "xfm",
+        "extension": ".txt"
+      }
+    }
+  },
+  "patterns": [
+    "sub-{subject}[/ses-{session}]/{datatype<dwi>|dwi}/sub-{subject}[_ses-{session}]_task-{task}[_acq-{acquisition}][_ce-{ceagent}][_rec-{reconstruction}][_res-{res}][_label-{label}][_echo-{echo}][_space-{space}][_desc-{desc}]_{suffix<dwi>|dwi}.{extension<nii|nii.gz|json|bvec|bval>|nii.gz}",
+    "sub-{subject}[/ses-{session}]/{datatype<dwi>|dwi}/sub-{subject}[_ses-{session}]_task-{task}[_acq-{acquisition}][_ce-{ceagent}][_rec-{reconstruction}][_res-{res}][_label-{label}][_echo-{echo}][_space-{space}][_desc-{desc}]_{suffix<dwiref|dseg|mask>}.{extension<nii|nii.gz|json>|nii.gz}",
+    "sub-{subject}[/ses-{session}]/{datatype<dwi>|dwi}/sub-{subject}[_ses-{session}]_task-{task}[_acq-{acquisition}][_ce-{ceagent}][_rec-{reconstruction}][_run-{run}]_from-{from}_to-{to}_mode-{mode<image|points>|image}_{suffix<xfm>|xfm}.{extension<txt|h5>}",
+    "sub-{subject}[/ses-{session}]/{datatype<dwi>|dwi}/sub-{subject}[_ses-{session}]_task-{task}[_acq-{acquisition}][_ce-{ceagent}][_rec-{reconstruction}][_run-{run}][_part-{part}][_desc-{desc}]_{suffix<timeseries>}.{extension<tsv|json>}",
+    "sub-{subject}[/ses-{session}]/{datatype<dwi>|dwi}/sub-{subject}[_ses-{session}]_task-{task}[_acq-{acquisition}][_ce-{ceagent}][_rec-{reconstruction}][_space-{space}][_res-{res}][_den-{den}][_hemi-{hemi}[_label-{label}][_desc-{desc}]_{suffix<|dwiref|dseg|mask>}.{extension<dtseries.nii|dtseries.json>}"
+  ]
+}

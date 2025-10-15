@@ -1,7 +1,7 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 #
-# Copyright 2021 The NiPreps Developers <nipreps@gmail.com>
+# Copyright The NiPreps Developers <nipreps@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,28 +21,64 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """Parser."""
-import os
+
 import sys
+import typing as ty
+from pathlib import Path
+
 from .. import config
 
+if ty.TYPE_CHECKING:
+    from bids import BIDSLayout
 
-def _build_parser():
-    """Build parser object."""
-    from functools import partial
-    from pathlib import Path
+
+def _build_parser(**kwargs):
+    """Build parser object.
+
+    ``kwargs`` are passed to ``argparse.ArgumentParser`` (mainly useful for debugging).
+    """
     from argparse import (
-        ArgumentParser,
+        Action,
         ArgumentDefaultsHelpFormatter,
+        ArgumentParser,
+        BooleanOptionalAction,
     )
+    from functools import partial
+
+    from niworkflows.utils.spaces import OutputReferencesAction, Reference
     from packaging.version import Version
+
     from .version import check_latest, is_flagged
-    from niworkflows.utils.spaces import Reference, OutputReferencesAction
+
+    class ToDict(Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            d = {}
+            for spec in values:
+                try:
+                    name, loc = spec.split('=')
+                    loc = Path(loc)
+                except ValueError:
+                    loc = Path(spec)
+                    name = loc.name
+
+                if name in d:
+                    raise ValueError(f'Received duplicate derivative name: {name}')
+
+                d[name] = loc
+            setattr(namespace, self.dest, d)
 
     def _path_exists(path, parser):
         """Ensure a given path exists."""
         if path is None or not Path(path).exists():
-            raise parser.error(f"Path does not exist: <{path}>.")
+            raise parser.error(f'Path does not exist: <{path}>.')
         return Path(path).absolute()
+
+    def _is_file(path, parser):
+        """Ensure a given path exists and it is a file."""
+        path = _path_exists(path, parser)
+        if not path.is_file():
+            raise parser.error(f'Path should point to a file (or symlink of file): <{path}>.')
+        return path
 
     def _min_one(value, parser):
         """Ensure an argument is not lower than 1."""
@@ -52,179 +88,262 @@ def _build_parser():
         return value
 
     def _to_gb(value):
-        scale = {"G": 1, "T": 10 ** 3, "M": 1e-3, "K": 1e-6, "B": 1e-9}
-        digits = "".join([c for c in value if c.isdigit()])
-        units = value[len(digits) :] or "M"
+        scale = {'G': 1, 'T': 10**3, 'M': 1e-3, 'K': 1e-6, 'B': 1e-9}
+        digits = ''.join([c for c in value if c.isdigit()])
+        units = value[len(digits) :] or 'M'
         return int(digits) * scale[units[0]]
 
-    def _drop_sub(value):
-        value = str(value)
-        return value.lstrip("sub-")
+    def _process_value(value):
+        import bids
 
-    def _bids_filter(value):
-        from json import loads
+        if value is None:
+            return bids.layout.Query.NONE
+        elif value == '*':
+            return bids.layout.Query.ANY
+        else:
+            return value
 
-        if value and Path(value).exists():
-            return loads(Path(value).read_text())
+    def _filter_pybids_none_any(dct):
+        d = {}
+        for k, v in dct.items():
+            if isinstance(v, list):
+                d[k] = [_process_value(val) for val in v]
+            else:
+                d[k] = _process_value(v)
+        return d
 
-    verstr = f"dMRIPrep v{config.environment.version}"
+    def _bids_filter(value, parser):
+        from json import JSONDecodeError, loads
+
+        if value:
+            if Path(value).exists():
+                try:
+                    return loads(Path(value).read_text(), object_hook=_filter_pybids_none_any)
+                except JSONDecodeError as e:
+                    raise parser.error(f'JSON syntax error in: <{value}>.') from e
+            else:
+                raise parser.error(f'Path does not exist: <{value}>.')
+
+    def _fallback_trt(value, parser):
+        if value == 'estimated':
+            return value
+        try:
+            return float(value)
+        except ValueError:
+            raise parser.error(
+                f'Falling back to TRT must be a number or "estimated". Received {value}.'
+            ) from None
+
+    verstr = f'dMRIPrep v{config.environment.version}'
     currentv = Version(config.environment.version)
-    is_release = not any(
-        (currentv.is_devrelease, currentv.is_prerelease, currentv.is_postrelease)
-    )
+    is_release = not any((currentv.is_devrelease, currentv.is_prerelease, currentv.is_postrelease))
 
     parser = ArgumentParser(
-        description="dMRIPrep: dMRI PREProcessing workflows v{}".format(
-            config.environment.version
-        ),
+        description=f'dMRIPrep: dMRI PREProcessing workflows v{config.environment.version}',
         formatter_class=ArgumentDefaultsHelpFormatter,
+        **kwargs,
     )
     PathExists = partial(_path_exists, parser=parser)
+    IsFile = partial(_is_file, parser=parser)
     PositiveInt = partial(_min_one, parser=parser)
+    BIDSFilter = partial(_bids_filter, parser=parser)
+    FallbackTRT = partial(_fallback_trt, parser=parser)
 
     # Arguments as specified by BIDS-Apps
     # required, positional arguments
     # IMPORTANT: they must go directly with the parser object
     parser.add_argument(
-        "bids_dir",
-        action="store",
+        'bids_dir',
+        action='store',
         type=PathExists,
-        help="the root folder of a BIDS valid dataset (sub-XXXXX folders should "
-        "be found at the top level in this folder).",
+        help='The root folder of a BIDS valid dataset (sub-XXXXX folders should '
+        'be found at the top level in this folder).',
     )
     parser.add_argument(
-        "output_dir",
-        action="store",
+        'output_dir',
+        action='store',
         type=Path,
-        help="the output path for the outcomes of preprocessing and visual " "reports",
+        help='The output path for the outcomes of preprocessing and visual reports',
     )
     parser.add_argument(
-        "analysis_level",
-        choices=["participant"],
-        help='processing stage to be run, only "participant" in the case of '
-        "dMRIPrep (see BIDS-Apps specification).",
+        'analysis_level',
+        choices=['participant'],
+        help='Processing stage to be run, only "participant" in the case of '
+        'dMRIPrep (see BIDS-Apps specification).',
     )
 
-    # optional arguments
-    parser.add_argument("--version", action="version", version=verstr)
-
-    g_bids = parser.add_argument_group("Options for filtering BIDS queries")
+    g_bids = parser.add_argument_group('Options for filtering BIDS queries')
     g_bids.add_argument(
-        "--skip-bids-validation",
-        action="store_true",
+        '--skip-bids-validation',
+        action='store_true',
         default=False,
-        help="assume the input dataset is BIDS compliant and skip the validation",
+        help='Assume the input dataset is BIDS compliant and skip the validation',
     )
     g_bids.add_argument(
-        "--participant-label",
-        "--participant_label",
-        action="store",
-        nargs="+",
-        type=_drop_sub,
-        help="a space delimited list of participant identifiers or a single "
-        "identifier (the sub- prefix can be removed)",
+        '--participant-label',
+        '--participant_label',
+        action='store',
+        nargs='+',
+        type=lambda label: label.removeprefix('sub-'),
+        help='A space delimited list of participant identifiers or a single '
+        'identifier (the sub- prefix can be removed)',
     )
     g_bids.add_argument(
-        "--bids-filter-file",
-        dest="bids_filters",
-        action="store",
-        type=_bids_filter,
-        metavar="PATH",
-        help="a JSON file describing custom BIDS input filter using pybids "
-        "{<suffix>:{<entity>:<filter>,...},...} "
-        "(https://github.com/bids-standard/pybids/blob/master/bids/layout/config/bids.json)",
+        '--session-label',
+        nargs='+',
+        type=lambda label: label.removeprefix('ses-'),
+        help='A space delimited list of session identifiers or a single '
+        'identifier (the ses- prefix can be removed)',
     )
     g_bids.add_argument(
-        "--anat-derivatives",
-        action="store",
-        metavar="PATH",
-        type=PathExists,
-        help="Reuse the anatomical derivatives from another fMRIPrep run or calculated "
-        "with an alternative processing tool (NOT RECOMMENDED).",
+        '--subject-anatomical-reference',
+        choices=['first-lex', 'unbiased', 'sessionwise'],
+        default='first-lex',
+        help='Method to produce the reference anatomical space:\n'
+        '\t"first-lex" will use the first image in lexicographical order\n'
+        '\t"unbiased" will construct an unbiased template from all images '
+        '(previously "--longitudinal")\n'
+        '\t"sessionwise" will independently process each session. If multiple runs are '
+        'found, the behavior will be similar to "first-lex" for each session.',
+    )
+    g_bids.add_argument(
+        '--bids-filter-file',
+        dest='bids_filters',
+        action='store',
+        type=BIDSFilter,
+        metavar='FILE',
+        help='A JSON file describing custom BIDS input filters using PyBIDS. '
+        'For further details, please check out '
+        f'https://fmriprep.readthedocs.io/en/{currentv.base_version if is_release else "latest"}/faq.html#'
+        'how-do-I-select-only-certain-files-to-be-input-to-fMRIPrep',
+    )
+    g_bids.add_argument(
+        '-d',
+        '--derivatives',
+        action=ToDict,
+        metavar='PACKAGE=PATH',
+        type=str,
+        nargs='+',
+        help=(
+            'Search PATH(s) for pre-computed derivatives. '
+            'These may be provided as named folders '
+            '(e.g., `--derivatives smriprep=/path/to/smriprep`).'
+        ),
+    )
+    g_bids.add_argument(
+        '--bids-database-dir',
+        metavar='PATH',
+        type=Path,
+        help='Path to a PyBIDS database folder, for faster indexing (especially '
+        'useful for large datasets). Will be created if not present.',
     )
 
-    g_perfm = parser.add_argument_group("Options to handle performance")
+    g_perfm = parser.add_argument_group('Options to handle performance')
     g_perfm.add_argument(
-        "--nprocs",
-        "--nthreads",
-        "--n_cpus",
-        "-n-cpus",
-        action="store",
+        '--num-workers',
+        '--nprocs',
+        '--n-procs',
+        '--num-procs',
+        '--n-workers',
+        dest='nprocs',
+        action='store',
         type=PositiveInt,
-        help="maximum number of threads across all processes",
+        help='Total number of available workers (processes)',
     )
     g_perfm.add_argument(
-        "--omp-nthreads",
-        action="store",
+        '--omp-nthreads',
+        '--nthreads',
+        '--n_cpus',
+        '--n-cpus',
+        action='store',
         type=PositiveInt,
-        help="maximum number of threads per-process",
+        help='maximum number of threads per-process',
     )
     g_perfm.add_argument(
-        "--mem",
-        "--mem_mb",
-        "--mem-mb",
-        dest="memory_gb",
-        action="store",
+        '--mem',
+        '--mem_mb',
+        '--mem-mb',
+        dest='memory_gb',
+        action='store',
         type=_to_gb,
-        help="upper bound memory limit for dMRIPrep processes",
+        metavar='MEMORY_MB',
+        help='Upper bound memory limit for dMRIPrep processes in MB',
     )
     g_perfm.add_argument(
-        "--low-mem",
-        action="store_true",
-        help="attempt to reduce memory usage (will increase disk usage "
-        "in working directory)",
+        '--low-mem',
+        action='store_true',
+        help='Attempt to reduce memory usage (will increase disk usage in working directory)',
     )
     g_perfm.add_argument(
-        "--use-plugin",
-        action="store",
-        default=None,
-        help="nipype plugin configuration file",
+        '--use-plugin',
+        '--nipype-plugin-file',
+        action='store',
+        metavar='FILE',
+        type=IsFile,
+        help='Nipype plugin configuration file',
     )
     g_perfm.add_argument(
-        "--anat-only", action="store_true", help="run anatomical workflows only"
-    )
-    g_perfm.add_argument(
-        "--boilerplate_only",
-        action="store_true",
+        '--sloppy',
+        action='store_true',
         default=False,
-        help="generate boilerplate only",
-    )
-    g_perfm.add_argument(
-        "--md-only-boilerplate",
-        action="store_true",
-        default=False,
-        help="skip generation of HTML and LaTeX formatted citation with pandoc",
-    )
-    g_perfm.add_argument(
-        "-v",
-        "--verbose",
-        dest="verbose_count",
-        action="count",
-        default=0,
-        help="increases log verbosity for each occurrence, debug level is -vvv",
+        help='Use low-quality tools for speed - TESTING ONLY',
     )
 
-    g_conf = parser.add_argument_group("Workflow configuration")
+    g_subset = parser.add_argument_group('Options for performing only a subset of the workflow')
+    g_subset.add_argument('--anat-only', action='store_true', help='run anatomical workflows only')
+    g_subset.add_argument(
+        '--level',
+        action='store',
+        default='full',
+        choices=['minimal', 'resampling', 'full'],
+        help="Processing level; may be 'minimal' (nothing that can be recomputed), "
+        "'resampling' (recomputable targets that aid in resampling) "
+        "or 'full' (all target outputs).",
+    )
+    g_subset.add_argument(
+        '--boilerplate-only',
+        '--boilerplate_only',
+        action='store_true',
+        default=False,
+        help='Generate boilerplate only',
+    )
+    g_subset.add_argument(
+        '--reports-only',
+        action='store_true',
+        default=False,
+        help="Only generate reports, don't run workflows. This will only rerun report "
+        'aggregation, not reportlet generation for specific nodes.',
+    )
+
+    g_conf = parser.add_argument_group('Workflow configuration')
     g_conf.add_argument(
-        "--ignore",
+        '--ignore',
         required=False,
-        action="store",
-        nargs="+",
+        action='store',
+        nargs='+',
         default=[],
-        choices=["fieldmaps", "sbref", "eddy"],
-        help="ignore selected aspects of the input dataset to disable corresponding "
-        "parts of the workflow (a space delimited list)",
+        choices=['fieldmaps', 'sbref', 'eddy', 't2w', 'flair', 'fmap-jacobian'],
+        help='Ignore selected aspects of the input dataset to disable corresponding '
+        'parts of the workflow (a space delimited list)',
     )
     g_conf.add_argument(
-        "--longitudinal",
-        action="store_true",
-        help="treat dataset as longitudinal - may increase runtime",
+        '--force',
+        required=False,
+        action='store',
+        nargs='+',
+        default=[],
+        choices=['bbr', 'no-bbr', 'syn-sdc', 'fmap-jacobian'],
+        help='Force selected processing choices, overriding automatic selections '
+        '(a space delimited list).\n'
+        ' * [no-]bbr: Use/disable boundary-based registration for DWI-to-T1w coregistration\n'
+        '             (No goodness-of-fit checks)\n'
+        ' * syn-sdc: Calculate SyN-SDC correction *in addition* to other fieldmaps\n',
     )
     g_conf.add_argument(
-        "--output-spaces",
-        nargs="*",
+        '--output-spaces',
+        nargs='*',
         action=OutputReferencesAction,
-        help="""\
+        help=f"""\
 Standard and non-standard spaces to resample anatomical and diffusion images to. \
 Standard spaces may be specified by the form \
 ``<SPACE>[:cohort-<label>][:res-<resolution>][...]``, where ``<SPACE>`` is \
@@ -236,176 +355,253 @@ is ``--output-spaces run`` - the original space and sampling grid of the origina
 Important to note, the ``res-*`` modifier does not define the resolution used for \
 the spatial normalization. To generate no DWI outputs (if that is intended for some reason), \
 use this option without specifying any spatial references. For further details, please check out \
-https://www.nipreps.org/dmriprep/en/%s/spaces.html"""
-        % (currentv.base_version if is_release else "latest"),
+https://www.nipreps.org/dmriprep/en/{currentv.base_version if is_release else 'latest'}/spaces.html""",
     )
     g_conf.add_argument(
-        "--dwi2t1w-init",
-        action="store",
-        default="register",
-        choices=["register", "header"],
-        help='Either "register" (the default) to initialize volumes at center or "header"'
-        " to use the header information when co-registering DWI to T1w images.",
+        '--dwi2anat-init',
+        choices=['auto', 't1w', 't2w', 'header'],
+        default='auto',
+        help='Method of initial DWI to anatomical coregistration. If `auto`, a T2w image is used '
+        'if available, otherwise the T1w image. `t1w` forces use of the T1w, `t2w` forces use of '
+        'the T2w, and `header` uses the DWI header information without an initial registration.',
+    )
+    g_conf.add_argument(
+        '--dwi2anat-dof',
+        action='store',
+        default=6,
+        choices=[6, 9, 12],
+        type=int,
+        help='Degrees of freedom when registering DWI to anatomical images. '
+        '6 degrees (rotation and translation) are used by default.',
+    )
+    g_conf.add_argument(
+        '--fallback-total-readout-time',
+        required=False,
+        action='store',
+        default=None,
+        type=FallbackTRT,
+        help='Fallback value for Total Readout Time (TRT) calculation. '
+        'May be a number or "estimated".',
+    )
+    g_conf.add_argument(
+        '--random-seed',
+        dest='_random_seed',
+        action='store',
+        type=int,
+        default=None,
+        help='Initialize the random seed for the workflow',
+    )
+
+    g_outputs = parser.add_argument_group('Options for modulating outputs')
+    g_outputs.add_argument(
+        '--output-layout',
+        action='store',
+        default='bids',
+        choices=('bids', 'legacy'),
+        help='Organization of outputs. "bids" (default) places dMRIPrep derivatives '
+        'directly in the output directory, and defaults to placing FreeSurfer '
+        'derivatives in <output-dir>/sourcedata/freesurfer. "legacy" creates '
+        'derivative datasets as subdirectories of outputs.',
+    )
+    g_outputs.add_argument(
+        '--aggregate-session-reports',
+        dest='aggr_ses_reports',
+        action='store',
+        type=PositiveInt,
+        default=4,
+        help="Maximum number of sessions aggregated in one subject's visual report. "
+        'If exceeded, visual reports are split by session.',
+    )
+    g_outputs.add_argument(
+        '--md-only-boilerplate',
+        action='store_true',
+        default=False,
+        help='Skip generation of HTML and LaTeX formatted citation with pandoc',
+    )
+    g_outputs.add_argument(
+        '--msm',
+        action=BooleanOptionalAction,
+        default=True,
+        dest='run_msmsulc',
+        help='Enable or disable Multimodal Surface Matching surface registration.',
     )
 
     #  ANTs options
-    g_ants = parser.add_argument_group("Specific options for ANTs registrations")
+    g_ants = parser.add_argument_group('Specific options for ANTs registrations')
     g_ants.add_argument(
-        "--skull-strip-template",
-        default="OASIS30ANTs",
+        '--skull-strip-template',
+        default='OASIS30ANTs',
         type=Reference.from_string,
-        help="select a template for skull-stripping with antsBrainExtraction",
+        help='Select a template for skull-stripping with antsBrainExtraction '
+        '(OASIS30ANTs, by default)',
     )
     g_ants.add_argument(
-        "--skull-strip-fixed-seed",
-        action="store_true",
-        help="do not use a random seed for skull-stripping - will ensure "
-        "run-to-run replicability when used with --omp-nthreads 1",
+        '--skull-strip-fixed-seed',
+        action='store_true',
+        help='Do not use a random seed for skull-stripping - will ensure '
+        'run-to-run replicability when used with --omp-nthreads 1 and '
+        'matching --random-seed <int>',
+    )
+    g_ants.add_argument(
+        '--skull-strip-t1w',
+        action='store',
+        choices=('auto', 'skip', 'force'),
+        default='force',
+        help="Perform T1-weighted skull stripping ('force' ensures skull "
+        "stripping, 'skip' ignores skull stripping, and 'auto' applies brain extraction "
+        'based on the outcome of a heuristic to check whether the brain is already masked).',
+    )
+
+    # Fieldmap options
+    g_fmap = parser.add_argument_group('Specific options for handling fieldmaps')
+    g_fmap.add_argument(
+        '--fmap-bspline',
+        action='store_true',
+        default=False,
+        help='Fit a B-Spline field using least-squares (experimental)',
+    )
+    g_fmap.add_argument(
+        '--fmap-no-demean',
+        action='store_false',
+        default=True,
+        help='Do not remove median (within mask) from fieldmap',
     )
 
     # SyN-unwarp options
-    g_syn = parser.add_argument_group("Specific options for SyN distortion correction")
+    g_syn = parser.add_argument_group('Specific options for SyN distortion correction')
     g_syn.add_argument(
-        "--use-syn-sdc",
-        action="store_true",
-        dest="use_syn",
+        '--use-syn-sdc',
+        nargs='?',
+        choices=['warn', 'error'],
+        action='store',
+        const='error',
         default=False,
-        help="""\
-Attempt to set-up fieldmap-less estimation of fieldmaps via nonlinear registration with ANTs \
-if no other fieldmap estimation method is available. Fieldmap-less estimation will not be used \
-when sufficient fieldmap information (B0 mapping with SEI or GRE, or PEPOLAR estimation with \
-EPIs) is retrieved from the BIDS structure for a given subject.
-""",
-    )
-    g_syn.add_argument(
-        "--force-syn",
-        action="store_true",
-        default=False,
-        help="""\
-Force estimation of fieldmaps with the fieldmap-less approach. The use of this feature \
-is discouraged.""",
+        help='Use fieldmap-less distortion correction based on anatomical image; '
+        'if unable, error (default) or warn based on optional argument.',
     )
 
     # FreeSurfer options
-    g_fs = parser.add_argument_group("Specific options for FreeSurfer preprocessing")
+    g_fs = parser.add_argument_group('Specific options for FreeSurfer preprocessing')
     g_fs.add_argument(
-        "--fs-license-file",
-        metavar="PATH",
-        type=PathExists,
-        help="Path to FreeSurfer license key file. Get it (for free) by registering"
-        " at https://surfer.nmr.mgh.harvard.edu/registration.html",
+        '--fs-license-file',
+        metavar='FILE',
+        type=IsFile,
+        help='Path to FreeSurfer license key file. Get it (for free) by registering'
+        ' at https://surfer.nmr.mgh.harvard.edu/registration.html',
     )
     g_fs.add_argument(
-        "--fs-subjects-dir",
-        metavar="PATH",
+        '--fs-subjects-dir',
+        metavar='PATH',
         type=Path,
-        help="Path to existing FreeSurfer subjects directory to reuse. "
-        "(default: OUTPUT_DIR/freesurfer)",
+        help='Path to existing FreeSurfer subjects directory to reuse. '
+        '(default: OUTPUT_DIR/freesurfer)',
+    )
+    g_fs.add_argument(
+        '--submm-recon',
+        action=BooleanOptionalAction,
+        default=True,
+        dest='hires',
+        help='Enable or disable sub-millimeter (hi-res) reconstruction.',
+    )
+    g_fs.add_argument(
+        '--fs-no-reconall',
+        action='store_false',
+        dest='run_reconall',
+        help='Disable FreeSurfer surface preprocessing.',
+    )
+    g_fs.add_argument(
+        '--fs-no-resume',
+        action='store_true',
+        dest='fs_no_resume',
+        help='EXPERT: Import pre-computed FreeSurfer reconstruction without resuming. '
+        'The user is responsible for ensuring that all necessary files are present.',
     )
 
-    # Surface generation xor
-    g_surfs = parser.add_argument_group("Surface preprocessing options")
-    g_surfs_xor = g_surfs.add_mutually_exclusive_group()
-    g_surfs_xor.add_argument(
-        "--no-submm-recon",
-        action="store_false",
-        dest="hires",
-        help="disable sub-millimeter (hires) reconstruction",
+    g_other = parser.add_argument_group('Other options')
+    g_other.add_argument('--version', action='version', version=verstr)
+    g_perfm.add_argument(
+        '-v',
+        '--verbose',
+        dest='verbose_count',
+        action='count',
+        default=0,
+        help='Increases log verbosity for each occurrence, debug level is -vvv',
     )
-    g_surfs_xor.add_argument(
-        "--fs-no-reconall",
-        action="store_false",
-        dest="run_reconall",
-        help="disable FreeSurfer surface preprocessing.",
-    )
-
-    g_other = parser.add_argument_group("Other options")
     g_other.add_argument(
-        "-w",
-        "--work-dir",
-        action="store",
+        '-w',
+        '--work-dir',
+        action='store',
         type=Path,
-        default=Path("work").absolute(),
-        help="path where intermediate results should be stored",
+        help='Path where intermediate results should be stored',
     )
     g_other.add_argument(
-        "--clean-workdir",
-        action="store_true",
+        '--clean-workdir',
+        action='store_true',
         default=False,
-        help="Clears working directory of contents. Use of this flag is not"
-        "recommended when running concurrent processes of dMRIPrep.",
+        help='Clears working directory of contents. Use of this flag is not '
+        'recommended when running concurrent processes of fMRIPrep.',
     )
     g_other.add_argument(
-        "--resource-monitor",
-        action="store_true",
+        '--resource-monitor',
+        action='store_true',
         default=False,
-        help="enable Nipype's resource monitoring to keep track of memory and CPU usage",
+        help="Enable Nipype's resource monitoring to keep track of memory and CPU usage",
     )
     g_other.add_argument(
-        "--reports-only",
-        action="store_true",
+        '--config-file',
+        action='store',
+        metavar='FILE',
+        help='Use pre-generated configuration file. Values in file will be overridden '
+        'by command-line arguments.',
+    )
+    g_other.add_argument(
+        '--write-graph',
+        action='store_true',
         default=False,
-        help="only generate reports, don't run workflows. This will only rerun report "
-        "aggregation, not 'reportlet' generation for specific nodes.",
+        help='Write workflow graph.',
     )
     g_other.add_argument(
-        "--run-uuid",
-        action="store",
-        default=None,
-        help="Specify UUID of previous run, to include error logs in report. "
-        "No effect without --reports-only.",
-    )
-    g_other.add_argument(
-        "--write-graph",
-        action="store_true",
+        '--stop-on-first-crash',
+        action='store_true',
         default=False,
-        help="Write workflow graph.",
+        help='Force stopping on first crash, even if a work directory was specified.',
     )
     g_other.add_argument(
-        "--stop-on-first-crash",
-        action="store_true",
+        '--notrack',
+        action='store_true',
         default=False,
-        help="Force stopping on first crash, even if a work directory"
-        " was specified.",
+        help='Opt-out of sending tracking information of this run to '
+        'the dMRIPrep developers. This information helps to '
+        'improve dMRIPrep and provides an indicator of real '
+        'world usage crucial for obtaining funding.',
     )
     g_other.add_argument(
-        "--notrack",
-        action="store_true",
-        default=False,
-        help="Opt-out of sending tracking information of this run to "
-        "the dMRIPREP developers. This information helps to "
-        "improve dMRIPREP and provides an indicator of real "
-        "world usage crucial for obtaining funding.",
-    )
-    g_other.add_argument(
-        "--sloppy",
-        dest="debug",
-        action="store_true",
-        default=False,
-        help="Use low-quality tools for speed - TESTING ONLY",
+        '--debug',
+        action='store',
+        nargs='+',
+        choices=config.DEBUG_MODES + ('all',),
+        help="Debug mode(s) to enable. 'all' is alias for all available modes.",
     )
 
     latest = check_latest()
     if latest is not None and currentv < latest:
         print(
-            """\
-You are using dMRIPrep-%s, and a newer version of dMRIPrep is available: %s.
+            f"""\
+You are using dMRIPrep-{currentv}, and a newer version of dMRIPrep is available: {latest}.
 Please check out our documentation about how and when to upgrade:
-https://dmriprep.readthedocs.io/en/latest/faq.html#upgrading"""
-            % (currentv, latest),
+https://dmriprep.readthedocs.io/en/latest/faq.html#upgrading""",
             file=sys.stderr,
         )
 
     _blist = is_flagged()
     if _blist[0]:
-        _reason = _blist[1] or "unknown"
+        _reason = _blist[1] or 'unknown'
         print(
-            """\
-WARNING: Version %s of dMRIPrep (current) has been FLAGGED
-(reason: %s).
+            f"""\
+WARNING: Version {config.environment.version} of dMRIPrep (current) has been FLAGGED
+(reason: {_reason}).
 That means some severe flaw was found in it and we strongly
-discourage its usage."""
-            % (config.environment.version, _reason),
+discourage its usage.""",
             file=sys.stderr,
         )
 
@@ -415,43 +611,61 @@ discourage its usage."""
 def parse_args(args=None, namespace=None):
     """Parse args and run further checks on the command line."""
     import logging
+
+    from niworkflows.utils.bids import collect_participants
     from niworkflows.utils.spaces import Reference, SpatialReferences
 
     parser = _build_parser()
     opts = parser.parse_args(args, namespace)
+
+    if opts.config_file:
+        skip = {} if opts.reports_only else {'execution': ('run_uuid',)}
+        config.load(opts.config_file, skip=skip, init=False)
+        config.loggers.cli.info(f'Loaded previous configuration file {opts.config_file}')
+
     config.execution.log_level = int(max(25 - 5 * opts.verbose_count, logging.DEBUG))
     config.from_dict(vars(opts))
+    config.nipype.init()
     config.loggers.init()
+
+    if config.execution.work_dir is None:
+        config.execution.work_dir = Path('work').absolute()
+
+    # Consistency checks
+    force_set = set(config.workflow.force)
+    ignore_set = set(config.workflow.ignore)
+    if {'bbr', 'no-bbr'} <= force_set:
+        msg = (
+            'Cannot force and disable boundary-based registration at the same time. '
+            'Remove `bbr` or `no-bbr` from the `--force` options.'
+        )
+        raise ValueError(msg)
+    if 'fmap-jacobian' in force_set & ignore_set:
+        msg = (
+            'Cannot force and ignore fieldmap Jacobian correction. '
+            'Remove `fmap-jacobian` from either the `--force` or the `--ignore` option.'
+        )
+        raise ValueError(msg)
 
     # Initialize --output-spaces if not defined
     if config.execution.output_spaces is None:
-        config.execution.output_spaces = SpatialReferences([Reference("run")])
+        config.execution.output_spaces = SpatialReferences([Reference('run')])
 
     # Retrieve logging level
     build_log = config.loggers.cli
 
-    if config.execution.fs_license_file is None:
-        raise RuntimeError(
-            """\
-ERROR: a valid license file is required for FreeSurfer to run. dMRIPrep looked for an existing \
-license file at several paths, in this order: 1) command line argument ``--fs-license-file``; \
-2) ``$FS_LICENSE`` environment variable; and 3) the ``$FREESURFER_HOME/license.txt`` path. Get it \
-(for free) by registering at https://surfer.nmr.mgh.harvard.edu/registration.html"""
-        )
-    os.environ["FS_LICENSE"] = str(config.execution.fs_license_file)
-
     # Load base plugin_settings from file if --use-plugin
     if opts.use_plugin is not None:
-        from yaml import load as loadyml
+        from yaml import safe_load as loadyml
 
         with open(opts.use_plugin) as f:
             plugin_settings = loadyml(f)
-        _plugin = plugin_settings.get("plugin")
+        _plugin = plugin_settings.get('plugin')
         if _plugin:
             config.nipype.plugin = _plugin
-            config.nipype.plugin_args = plugin_settings.get("plugin_args", {})
-            config.nipype.nprocs = config.nipype.plugin_args.get(
-                "n_procs", config.nipype.nprocs
+            config.nipype.plugin_args = plugin_settings.get('plugin_args', {})
+            config.nipype.nprocs = opts.nprocs or config.nipype.plugin_args.get(
+                'n_procs', config.nipype.nprocs
             )
 
     # Resource management options
@@ -459,44 +673,68 @@ license file at several paths, in this order: 1) command line argument ``--fs-li
     # This may need to be revisited if people try to use batch plugins
     if 1 < config.nipype.nprocs < config.nipype.omp_nthreads:
         build_log.warning(
-            "Per-process threads (--omp-nthreads=%d) exceed total "
-            "threads (--nthreads/--n_cpus=%d)",
-            config.nipype.omp_nthread,
-            config.nipype.nprocs,
+            f'Per-process threads (--omp-nthreads={config.nipype.omp_nthreads}) exceed total '
+            f'threads (--nthreads/--n_cpus={config.nipype.nprocs})',
+        )
+
+    # Inform the user about the risk of using brain-extracted images
+    if config.workflow.skull_strip_t1w == 'auto':
+        build_log.warning(
+            """\
+Option ``--skull-strip-t1w`` was set to 'auto'. A heuristic will be \
+applied to determine whether the input T1w image(s) have already been skull-stripped.
+If that were the case, brain extraction and INU correction will be skipped for those T1w \
+inputs. Please, BEWARE OF THE RISKS TO THE CONSISTENCY of results when using varying \
+processing workflows across participants. To determine whether a participant has been run \
+through the shortcut pipeline (meaning, brain extraction was skipped), please check the \
+citation boilerplate. When reporting results with varying pipelines, please make sure you \
+mention this particular variant of fMRIPrep listing the participants for which it was \
+applied."""
         )
 
     bids_dir = config.execution.bids_dir
     output_dir = config.execution.output_dir
     work_dir = config.execution.work_dir
     version = config.environment.version
+    output_layout = config.execution.output_layout
 
     if config.execution.fs_subjects_dir is None:
-        config.execution.fs_subjects_dir = output_dir / "freesurfer"
+        if output_layout == 'bids':
+            config.execution.fs_subjects_dir = output_dir / 'sourcedata' / 'freesurfer'
+        elif output_layout == 'legacy':
+            config.execution.fs_subjects_dir = output_dir / 'freesurfer'
+    if config.execution.dmriprep_dir is None:
+        if output_layout == 'bids':
+            config.execution.dmriprep_dir = output_dir
+        elif output_layout == 'legacy':
+            config.execution.dmriprep_dir = output_dir / 'dmriprep'
 
     # Wipe out existing work_dir
     if opts.clean_workdir and work_dir.exists():
         from niworkflows.utils.misc import clean_directory
 
-        build_log.log("Clearing previous dMRIPrep working directory: %s", work_dir)
+        build_log.log(f'Clearing previous dMRIPrep working directory: {work_dir}')
         if not clean_directory(work_dir):
-            build_log.warning(
-                "Could not clear all contents of working directory: %s", work_dir
-            )
+            build_log.warning(f'Could not clear all contents of working directory: {work_dir}')
+
+    # Update the config with an empty dict to trigger initialization of all config
+    # sections (we used `init=False` above).
+    # This must be done after cleaning the work directory, or we could delete an
+    # open SQLite database
+    config.from_dict({})
 
     # Ensure input and output folders are not the same
     if output_dir == bids_dir:
+        ver = version.split('+')[0]
         parser.error(
-            "The selected output folder is the same as the input BIDS folder. "
-            "Please modify the output path (suggestion: %s)."
-            % bids_dir
-            / "derivatives"
-            / ("dmriprep-%s" % version.split("+")[0])
+            'The selected output folder is the same as the input BIDS folder. '
+            f'Please modify the output path (suggestion: {bids_dir / "derivatives" / f"dmriprep-{ver}"}).'
         )
 
     if bids_dir in work_dir.parents:
         parser.error(
-            "The selected working directory is a subdirectory of the input BIDS folder. "
-            "Please modify the output path."
+            'The selected working directory is a subdirectory of the input BIDS folder. '
+            'Please modify the output path.'
         )
 
     # Validate inputs
@@ -504,33 +742,75 @@ license file at several paths, in this order: 1) command line argument ``--fs-li
         from ..utils.bids import validate_input_dir
 
         build_log.info(
-            "Making sure the input data is BIDS compliant (warnings can be ignored in most "
-            "cases)."
+            'Making sure the input data is BIDS compliant (warnings can be ignored in most cases).'
         )
         validate_input_dir(
-            config.environment.exec_env, opts.bids_dir, opts.participant_label
+            config.environment.exec_env,
+            opts.bids_dir,
+            opts.participant_label,
+            need_T1w=not config.execution.derivatives,
         )
 
     # Setup directories
-    config.execution.log_dir = output_dir / "dmriprep" / "logs"
+    config.execution.log_dir = config.execution.dmriprep_dir / 'logs'
     # Check and create output and working directories
     config.execution.log_dir.mkdir(exist_ok=True, parents=True)
-    output_dir.mkdir(exist_ok=True, parents=True)
     work_dir.mkdir(exist_ok=True, parents=True)
 
     # Force initialization of the BIDSLayout
+    config.loggers.cli.debug('Initializing BIDS Layout')
     config.execution.init()
-    all_subjects = config.execution.layout.get_subjects()
-    if config.execution.participant_label is None:
-        config.execution.participant_label = all_subjects
 
-    participant_label = set(config.execution.participant_label)
-    missing_subjects = participant_label - set(all_subjects)
-    if missing_subjects:
-        parser.error(
-            "One or more participant labels were not found in the BIDS directory: "
-            "%s." % ", ".join(missing_subjects)
+    # First check that bids_dir looks like a BIDS folder
+    subject_list = collect_participants(
+        config.execution.layout, participant_label=config.execution.participant_label
+    )
+    if config.execution.participant_label is None:
+        config.execution.participant_label = subject_list
+
+    session_list = config.execution.session_label or []
+    subject_session_list = create_processing_groups(
+        config.execution.layout,
+        subject_list,
+        session_list,
+        config.workflow.subject_anatomical_reference,
+    )
+    config.execution.processing_groups = subject_session_list
+    config.execution.participant_label = sorted(subject_list)
+    config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
+
+
+def create_processing_groups(
+    layout: 'BIDSLayout',
+    subject_list: list,
+    session_list: list | str | None,
+    subject_anatomical_reference: str,
+) -> list[tuple[str]]:
+    """Generate a list of subject-session pairs to be processed."""
+    from bids.layout import Query
+
+    subject_session_list = []
+
+    for subject in subject_list:
+        sessions = (
+            layout.get_sessions(
+                scope='raw',
+                subject=subject,
+                session=session_list or Query.OPTIONAL,
+            )
+            or None
         )
 
-    config.execution.participant_label = sorted(participant_label)
-    config.workflow.skull_strip_template = config.workflow.skull_strip_template[0]
+        if subject_anatomical_reference == 'sessionwise':
+            if sessions is None:
+                config.loggers.cli.warning(
+                    '`--subject-anatomical-reference sessionwise` was requested, but no sessions '
+                    f'found for subject {subject}... treating as single-session.'
+                )
+                subject_session_list.append((subject, None))
+            else:
+                subject_session_list.extend((subject, session) for session in sessions)
+        else:
+            subject_session_list.append((subject, sessions))
+
+    return subject_session_list

@@ -21,13 +21,21 @@ using the :py:func:`~dmriprep.config.load` function.
 
 Configuration sections
 ----------------------
+.. currentmodule:: dmriprep.config
+.. autoclass:: dmriprep.config._Config
+   :members:
+   :private-members:
 .. autoclass:: environment
+   :noindex:
    :members:
 .. autoclass:: execution
+   :noindex:
    :members:
 .. autoclass:: workflow
+   :noindex:
    :members:
 .. autoclass:: nipype
+   :noindex:
    :members:
 
 Usage
@@ -54,139 +62,153 @@ graph is built across processes.
 Logging
 -------
 .. autoclass:: loggers
+   :noindex:
    :members:
 
 Other responsibilities
 ----------------------
-The :py:mod:`config` is responsible for other convenience actions.
+The :py:mod:`~dmriprep.config` is responsible for other convenience actions.
 
-  * Switching Python's :obj:`multiprocessing` to *forkserver* mode.
+  * Switching Python's ``multiprocessing`` to *forkserver* mode.
   * Set up a filter for warnings as early as possible.
   * Automated I/O magic operations. Some conversions need to happen in the
     store/load processes (e.g., from/to :obj:`~pathlib.Path` \<-\> :obj:`str`,
-    :py:class:`~bids.layout.BIDSLayout`, etc.)
+    :obj:`~bids.layout.BIDSLayout`, etc.)
 
 """
-from multiprocessing import set_start_method
+
 import warnings
+from multiprocessing import set_start_method
 
 # cmp is not used by dmriprep, so ignore nipype-generated warnings
-warnings.filterwarnings("ignore", "cmp not installed")
-warnings.filterwarnings(
-    "ignore", "This has not been fully tested. Please report any failures."
-)
-warnings.filterwarnings("ignore", "sklearn.externals.joblib is deprecated in 0.21")
-warnings.filterwarnings("ignore", "can't resolve package from __spec__ or __package__")
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=ResourceWarning)
+warnings.filterwarnings('ignore', 'cmp not installed')
+warnings.filterwarnings('ignore', 'This has not been fully tested. Please report any failures.')
+warnings.filterwarnings('ignore', 'sklearn.externals.joblib is deprecated in 0.21')
+warnings.filterwarnings('ignore', "can't resolve package from __spec__ or __package__")
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=ResourceWarning)
 
 
 try:
-    set_start_method("forkserver")
+    set_start_method('forkserver')
 except RuntimeError:
     pass  # context has been already set
 finally:
     # Defer all custom import for after initializing the forkserver and
     # ignoring the most annoying warnings
-    import os
-    import sys
     import logging
-
-    from uuid import uuid4
+    import os
+    import random
+    import sys
+    from contextlib import suppress
     from pathlib import Path
     from time import strftime
-    from niworkflows.utils.spaces import SpatialReferences as _SRs, Reference as _Ref
-    from nipype import logging as nlogging, __version__ as _nipype_ver
+    from uuid import uuid4
+
+    from nipype import __version__ as _nipype_ver
+    from nipype import logging as nlogging
+    from niworkflows.utils.spaces import Reference as _Ref
+    from niworkflows.utils.spaces import SpatialReferences as _SRs
     from templateflow import __version__ as _tf_ver
+    from templateflow.conf import TF_LAYOUT
+
     from .. import __version__
 
 
 def redirect_warnings(message, category, filename, lineno, file=None, line=None):
     """Redirect other warnings."""
     logger = logging.getLogger()
-    logger.debug("Captured warning (%s): %s", category, message)
+    logger.debug(f'Captured warning ({category}): {message}')
 
 
 warnings.showwarning = redirect_warnings
 
-logging.addLevelName(25, "IMPORTANT")  # Add a new level between INFO and WARNING
-logging.addLevelName(15, "VERBOSE")  # Add a new level between INFO and DEBUG
+logging.addLevelName(25, 'IMPORTANT')  # Add a new level between INFO and WARNING
+logging.addLevelName(15, 'VERBOSE')  # Add a new level between INFO and DEBUG
 
 DEFAULT_MEMORY_MIN_GB = 0.01
-NONSTANDARD_REFERENCES = ["anat", "T1w", "dwi", "fsnative"]
+NONSTANDARD_REFERENCES = ['anat', 'T1w', 'dwi', 'fsnative']
 
 _exec_env = os.name
 _docker_ver = None
 # special variable set in the container
-if os.getenv("IS_DOCKER_8395080871"):
-    _exec_env = "singularity"
-    _cgroup = Path("/proc/1/cgroup")
-    if _cgroup.exists() and "docker" in _cgroup.read_text():
-        _docker_ver = os.getenv("DOCKER_VERSION_8395080871")
-        _exec_env = "dmriprep-docker" if _docker_ver else "docker"
+if os.getenv('IS_DOCKER_8395080871'):
+    _exec_env = 'singularity'
+    _cgroup = Path('/proc/1/cgroup')
+    if _cgroup.exists() and 'docker' in _cgroup.read_text():
+        _docker_ver = os.getenv('DOCKER_VERSION_8395080871')
+        _exec_env = 'dmriprep-docker' if _docker_ver else 'docker'
     del _cgroup
 
-_fs_license = os.getenv("FS_LICENSE")
-if _fs_license is None and os.getenv("FREESURFER_HOME"):
-    _fs_license = os.path.join(os.getenv("FREESURFER_HOME"), "license.txt")
+_fs_license = os.getenv('FS_LICENSE')
+if _fs_license is None and os.getenv('FREESURFER_HOME'):
+    _fs_license = os.path.join(os.getenv('FREESURFER_HOME'), 'license.txt')
 
 _templateflow_home = Path(
-    os.getenv(
-        "TEMPLATEFLOW_HOME", os.path.join(os.getenv("HOME"), ".cache", "templateflow")
-    )
+    os.getenv('TEMPLATEFLOW_HOME', os.path.join(os.getenv('HOME'), '.cache', 'templateflow'))
 )
 
-try:
+_free_mem_at_start = None
+
+with suppress(Exception):
     from psutil import virtual_memory
 
-    _free_mem_at_start = round(virtual_memory().free / 1024 ** 3, 1)
-except Exception:
-    _free_mem_at_start = None
+    _free_mem_at_start = round(virtual_memory().free / 1024**3, 1)
 
-_oc_limit = "n/a"
-_oc_policy = "n/a"
-try:
+
+_oc_limit = 'n/a'
+_oc_policy = 'n/a'
+with suppress(Exception):
     # Memory policy may have a large effect on types of errors experienced
-    _proc_oc_path = Path("/proc/sys/vm/overcommit_memory")
+    _proc_oc_path = Path('/proc/sys/vm/overcommit_memory')
     if _proc_oc_path.exists():
-        _oc_policy = {"0": "heuristic", "1": "always", "2": "never"}.get(
-            _proc_oc_path.read_text().strip(), "unknown"
+        _oc_policy = {'0': 'heuristic', '1': 'always', '2': 'never'}.get(
+            _proc_oc_path.read_text().strip(), 'unknown'
         )
-        if _oc_policy != "never":
-            _proc_oc_kbytes = Path("/proc/sys/vm/overcommit_kbytes")
+        if _oc_policy != 'never':
+            _proc_oc_kbytes = Path('/proc/sys/vm/overcommit_kbytes')
             if _proc_oc_kbytes.exists():
                 _oc_limit = _proc_oc_kbytes.read_text().strip()
-            if (
-                _oc_limit in ("0", "n/a")
-                and Path("/proc/sys/vm/overcommit_ratio").exists()
-            ):
-                _oc_limit = "{}%".format(
-                    Path("/proc/sys/vm/overcommit_ratio").read_text().strip()
-                )
-except Exception:
-    pass
+            if _oc_limit in ('0', 'n/a') and Path('/proc/sys/vm/overcommit_ratio').exists():
+                _oc_limit = f'{Path("/proc/sys/vm/overcommit_ratio").read_text().strip()}%'
+
+
+# Debug modes are names that influence the exposure of internal details to
+# the user, either through additional derivatives or increased verbosity
+DEBUG_MODES = ('fieldmaps', 'pdb')
 
 
 class _Config:
     """An abstract class forbidding instantiation."""
 
-    _paths = tuple()
+    _paths = ()
 
     def __init__(self):
         """Avert instantiation."""
-        raise RuntimeError("Configuration type is not instantiable.")
+        raise RuntimeError('Configuration type is not instantiable.')
 
     @classmethod
-    def load(cls, settings, init=True):
+    def load(cls, settings, init=True, ignore=None):
         """Store settings from a dictionary."""
+        ignore = ignore or {}
         for k, v in settings.items():
-            if v is None:
+            if k in ignore or v is None:
                 continue
             if k in cls._paths:
-                setattr(cls, k, Path(v).absolute())
-                continue
-            if hasattr(cls, k):
+                if isinstance(v, list | tuple):
+                    setattr(cls, k, [Path(val).absolute() for val in v])
+                elif isinstance(v, dict):
+                    setattr(cls, k, {key: Path(val).absolute() for key, val in v.items()})
+                else:
+                    setattr(cls, k, Path(v).absolute())
+            elif hasattr(cls, k):
+                match k:
+                    # Handle special deserializations
+                    case 'processing_groups':
+                        v = _deserialize_pg(v)
+                    case _:
+                        pass
                 setattr(cls, k, v)
 
         if init:
@@ -200,14 +222,19 @@ class _Config:
         """Return defined settings."""
         out = {}
         for k, v in cls.__dict__.items():
-            if k.startswith("_") or v is None:
+            if k.startswith('_') or v is None:
                 continue
             if callable(getattr(cls, k)):
                 continue
             if k in cls._paths:
-                v = str(v)
+                if isinstance(v, list | tuple):
+                    v = [str(val) for val in v]
+                elif isinstance(v, dict):
+                    v = {key: str(val) for key, val in v.items()}
+                else:
+                    v = str(v)
             if isinstance(v, _SRs):
-                v = " ".join([str(s) for s in v.references]) or None
+                v = ' '.join([str(s) for s in v.references]) or None
             if isinstance(v, _Ref):
                 v = str(v) or None
             out[k] = v
@@ -251,7 +278,7 @@ class environment(_Config):
 class nipype(_Config):
     """Nipype settings."""
 
-    crashfile_format = "txt"
+    crashfile_format = 'txt'
     """The file format for crashfiles, either text or pickle."""
     get_linked_libs = False
     """Run NiPype's tool to enlist linked libraries for every interface."""
@@ -262,13 +289,13 @@ class nipype(_Config):
     omp_nthreads = os.cpu_count()
     """Number of CPUs a single process can access for multithreaded execution."""
     parameterize_dirs = False
-    """The node’s output directory will contain full parameterization of any iterable, otherwise
+    """The node's output directory will contain full parameterization of any iterable, otherwise
     parameterizations over 32 characters will be replaced by their hash."""
-    plugin = "MultiProc"
+    plugin = 'MultiProc'
     """NiPype's execution plugin."""
     plugin_args = {
-        "maxtasksperchild": 1,
-        "raise_insufficient": False,
+        'maxtasksperchild': 1,
+        'raise_insufficient': False,
     }
     """Settings for NiPype's execution plugin."""
     resource_monitor = False
@@ -281,17 +308,17 @@ class nipype(_Config):
         """Format a dictionary for Nipype consumption."""
         nprocs = int(cls.nprocs)
         if nprocs == 1:
-            cls.plugin = "Linear"
-            return {"plugin": "Linear"}
+            cls.plugin = 'Linear'
+            return {'plugin': 'Linear'}
 
         out = {
-            "plugin": cls.plugin,
-            "plugin_args": cls.plugin_args,
+            'plugin': cls.plugin,
+            'plugin_args': cls.plugin_args,
         }
-        if cls.plugin in ("MultiProc", "LegacyMultiProc"):
-            out["plugin_args"]["n_procs"] = int(cls.nprocs)
+        if cls.plugin in ('MultiProc', 'LegacyMultiProc'):
+            out['plugin_args']['n_procs'] = int(cls.nprocs)
             if cls.memory_gb:
-                out["plugin_args"]["memory_gb"] = float(cls.memory_gb)
+                out['plugin_args']['memory_gb'] = float(cls.memory_gb)
         return out
 
     @classmethod
@@ -303,10 +330,10 @@ class nipype(_Config):
         if cls.resource_monitor:
             ncfg.update_config(
                 {
-                    "monitoring": {
-                        "enabled": cls.resource_monitor,
-                        "sample_frequency": "0.5",
-                        "summary_append": True,
+                    'monitoring': {
+                        'enabled': cls.resource_monitor,
+                        'sample_frequency': '0.5',
+                        'summary_append': True,
                     }
                 }
             )
@@ -315,12 +342,12 @@ class nipype(_Config):
         # Nipype config (logs and execution)
         ncfg.update_config(
             {
-                "execution": {
-                    "crashdump_dir": str(execution.log_dir),
-                    "crashfile_format": cls.crashfile_format,
-                    "get_linked_libs": cls.get_linked_libs,
-                    "stop_on_first_crash": cls.stop_on_first_crash,
-                    "parameterize_dirs": cls.parameterize_dirs,
+                'execution': {
+                    'crashdump_dir': str(execution.log_dir),
+                    'crashfile_format': cls.crashfile_format,
+                    'get_linked_libs': cls.get_linked_libs,
+                    'stop_on_first_crash': cls.stop_on_first_crash,
+                    'parameterize_dirs': cls.parameterize_dirs,
                 }
             }
         )
@@ -329,8 +356,8 @@ class nipype(_Config):
 class execution(_Config):
     """Configure run-level settings."""
 
-    anat_derivatives = None
-    """A path where anatomical derivatives are found to fast-track *sMRIPrep*."""
+    bids_database_dir = None
+    """Path to the directory containing SQLite database indices for the input BIDS dataset."""
     bids_dir = None
     """An existing path to the dataset, which must be BIDS-compliant."""
     bids_description_hash = None
@@ -339,8 +366,14 @@ class execution(_Config):
     """A dictionary of BIDS selection filters."""
     boilerplate_only = False
     """Only generate a boilerplate."""
-    debug = False
-    """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
+    dataset_links = {}
+    """A dictionary of dataset links to be used to track Sources in sidecars."""
+    debug = []
+    """Debug mode(s)."""
+    derivatives = {}
+    """Path(s) to search for pre-computed derivatives"""
+    dmriprep_dir = None
+    """Root of dMRIPrep BIDS Derivatives dataset. Depends on output_layout."""
     fs_license_file = _fs_license
     """An existing file containing a FreeSurfer license."""
     fs_subjects_dir = None
@@ -356,21 +389,29 @@ class execution(_Config):
     md_only_boilerplate = False
     """Do not convert boilerplate from MarkDown to LaTex and HTML."""
     notrack = False
-    """Do not monitor *dMRIPrep* using Google Analytics."""
+    """Do not collect telemetry information for *dMRIPrep*."""
     output_dir = None
     """Folder where derivatives will be stored."""
+    output_layout = None
+    """Layout of derivatives within output_dir."""
     output_spaces = None
     """List of (non)standard spaces designated (with the ``--output-spaces`` flag of
     the command line) as spatial references for outputs."""
-    reports_only = False
-    """Only build the reports, based on the reportlets found in a cached working directory."""
-    run_uuid = "%s_%s" % (strftime("%Y%m%d-%H%M%S"), uuid4())
-    """Unique identifier of this particular run."""
+    processing_groups = None
+    """List of tuples (participant, session(s)) that will be preprocessed."""
     participant_label = None
     """List of participant identifiers that are to be preprocessed."""
+    reports_only = False
+    """Only build the reports, based on the reportlets found in a cached working directory."""
+    run_uuid = f'{strftime("%Y%m%d-%H%M%S")}_{uuid4()}'
+    """Unique identifier of this particular run."""
+    session_label = None
+    """List of session identifiers that are to be preprocessed."""
+    sloppy = False
+    """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
     templateflow_home = _templateflow_home
     """The root folder of the TemplateFlow client."""
-    work_dir = Path("work").absolute()
+    work_dir = Path('work').absolute()
     """Path to a working directory where intermediate results will be available."""
     write_graph = False
     """Write out the computational graph corresponding to the planned preprocessing."""
@@ -378,40 +419,90 @@ class execution(_Config):
     _layout = None
 
     _paths = (
-        "anat_derivatives",
-        "bids_dir",
-        "fs_license_file",
-        "fs_subjects_dir",
-        "layout",
-        "log_dir",
-        "output_dir",
-        "templateflow_home",
-        "work_dir",
+        'bids_database_dir',
+        'bids_dir',
+        'derivatives',
+        'dmriprep_dir',
+        'fs_license_file',
+        'fs_subjects_dir',
+        'layout',
+        'log_dir',
+        'output_dir',
+        'templateflow_home',
+        'work_dir',
     )
 
     @classmethod
     def init(cls):
         """Create a new BIDS Layout accessible with :attr:`~execution.layout`."""
+        if cls.fs_license_file and Path(cls.fs_license_file).is_file():
+            os.environ['FS_LICENSE'] = str(cls.fs_license_file)
+
         if cls._layout is None:
             import re
-            from bids.layout import BIDSLayout
 
-            work_dir = cls.work_dir / "bids.db"
-            work_dir.mkdir(exist_ok=True, parents=True)
+            from bids.layout import BIDSLayout
+            from bids.layout.index import BIDSLayoutIndexer
+
+            _db_path = cls.bids_database_dir or (cls.work_dir / cls.run_uuid / 'bids_db')
+            _db_path.mkdir(exist_ok=True, parents=True)
+
+            # Recommended after PyBIDS 12.1
+            ignore_patterns = [
+                'code',
+                'stimuli',
+                'sourcedata',
+                'models',
+                re.compile(r'^\.'),
+                re.compile(r'sub-[a-zA-Z0-9]+(/ses-[a-zA-Z0-9]+)?/(beh|bold|eeg|ieeg|meg|perf)'),
+            ]
+            if cls.participant_label and cls.bids_database_dir is None:
+                # Ignore any subjects who aren't the requested ones.
+                # This is only done if the database is written out to a run-specific folder.
+                ignore_patterns.append(
+                    re.compile(r'sub-(?!(' + '|'.join(cls.participant_label) + r')(\b|_))')
+                )
+
+            _indexer = BIDSLayoutIndexer(
+                validate=False,
+                ignore=ignore_patterns,
+            )
             cls._layout = BIDSLayout(
                 str(cls.bids_dir),
-                validate=False,
-                # database_path=str(work_dir),
-                ignore=(
-                    "code",
-                    "stimuli",
-                    "sourcedata",
-                    "models",
-                    "derivatives",
-                    re.compile(r"^\."),
-                ),
+                database_path=_db_path,
+                reset_database=cls.bids_database_dir is None,
+                indexer=_indexer,
             )
+            cls.bids_database_dir = _db_path
         cls.layout = cls._layout
+        if cls.bids_filters:
+            from bids.layout import Query
+
+            def _process_value(value):
+                """Convert string with "Query" in it to Query object."""
+                if isinstance(value, list):
+                    return [_process_value(val) for val in value]
+                else:
+                    return (
+                        getattr(Query, value[7:-4])
+                        if not isinstance(value, Query) and 'Query' in value
+                        else value
+                    )
+
+            # unserialize pybids Query enum values
+            for acq, filters in cls.bids_filters.items():
+                for k, v in filters.items():
+                    cls.bids_filters[acq][k] = _process_value(v)
+
+        dataset_links = {
+            'raw': cls.bids_dir,
+            'templateflow': Path(TF_LAYOUT.root),
+        }
+        dataset_links.update(cls.derivatives)
+        cls.dataset_links = dataset_links
+
+        if cls.debug and 'all' in cls.debug:
+            cls.debug = list(DEBUG_MODES)
 
 
 # These variables are not necessary anymore
@@ -430,31 +521,53 @@ class workflow(_Config):
 
     anat_only = False
     """Execute the anatomical preprocessing only."""
-    dwi2t1w_init = "register"
-    """Whether to use standard coregistration ('register') or to initialize coregistration from the
-    DWI header ('header')."""
+    cifti_output = None
+    """Generate HCP Grayordinates, accepts either ``'91k'`` (default) or ``'170k'``."""
+    dwi2anat_dof = None
+    """Degrees of freedom of the DWI-to-anatomical registration steps."""
+    dwi2anat_init = 'auto'
+    """Method of initial DWI to anatomical coregistration. If `auto`, a T2w image is used
+    if available, otherwise the T1w image. `t1w` forces use of the T1w, `t2w` forces use of
+    the T2w, and `header` uses the DWI header information without an initial registration."""
+    fallback_total_readout_time = None
+    """Infer the total readout time if unavailable from authoritative metadata.
+    This may be a number or the string "estimated"."""
     fmap_bspline = None
     """Regularize fieldmaps with a field of B-Spline basis."""
     fmap_demean = None
     """Remove the mean from fieldmaps."""
-    force_syn = None
-    """Run *fieldmap-less* susceptibility-derived distortions estimation."""
+    force = None
+    """Force particular steps for *dMRIPrep*."""
+    fs_no_resume = None
+    """Adjust pipeline to reuse base template of existing longitudinal *FreeSurfer*."""
     hires = None
     """Run FreeSurfer ``recon-all`` with the ``-hires`` flag."""
     ignore = None
     """Ignore particular steps for *dMRIPrep*."""
-    longitudinal = False
-    """Run FreeSurfer ``recon-all`` with the ``-logitudinal`` flag."""
+    level = None
+    """Level of preprocessing to complete. One of ['minimal', 'resampling', 'full']."""
+    run_msmsulc = True
+    """Run Multimodal Surface Matching surface registration."""
     run_reconall = True
     """Run FreeSurfer's surface reconstruction."""
     skull_strip_fixed_seed = False
     """Fix a seed for skull-stripping."""
-    skull_strip_template = "OASIS30ANTs"
+    skull_strip_template = 'OASIS30ANTs'
     """Change default brain extraction template."""
+    skull_strip_t1w = 'force'
+    """Skip brain extraction of the T1w image (default is ``force``, meaning that
+    *dMRIPrep* will run brain extraction of the T1w)."""
     spaces = None
     """Keeps the :py:class:`~niworkflows.utils.spaces.SpatialReferences`
     instance keeping standard and nonstandard spaces."""
-    use_syn = None
+    subject_anatomical_reference = 'first-lex'
+    """Method to produce the reference anatomical space. Available options are:
+    `first-lex` will use the first image in lexicographical order, `unbiased` will
+    construct an unbiased template from all available images,
+    and `sessionwise` will independently process each session."""
+    use_bbr = None
+    """Run boundary-based registration for DWI-to-T1w registration."""
+    use_syn_sdc = None
     """Run *fieldmap-less* susceptibility-derived distortions estimation
     in the absence of any alternatives."""
 
@@ -462,18 +575,18 @@ class workflow(_Config):
 class loggers:
     """Keep loggers easily accessible (see :py:func:`init`)."""
 
-    _fmt = "%(asctime)s,%(msecs)d %(name)-2s " "%(levelname)-2s:\n\t %(message)s"
-    _datefmt = "%y%m%d-%H:%M:%S"
+    _fmt = '%(asctime)s,%(msecs)d %(name)-2s %(levelname)-2s:\n\t %(message)s'
+    _datefmt = '%y%m%d-%H:%M:%S'
 
     default = logging.getLogger()
     """The root logger."""
-    cli = logging.getLogger("cli")
+    cli = logging.getLogger('cli')
     """Command-line interface logging."""
-    workflow = nlogging.getLogger("nipype.workflow")
+    workflow = nlogging.getLogger('nipype.workflow')
     """NiPype's workflow logger."""
-    interface = nlogging.getLogger("nipype.interface")
+    interface = nlogging.getLogger('nipype.interface')
     """NiPype's interface logger."""
-    utils = nlogging.getLogger("nipype.utils")
+    utils = nlogging.getLogger('nipype.utils')
     """NiPype's utils logger."""
 
     @classmethod
@@ -497,54 +610,130 @@ class loggers:
         cls.workflow.setLevel(execution.log_level)
         cls.utils.setLevel(execution.log_level)
         ncfg.update_config(
-            {"logging": {"log_directory": str(execution.log_dir), "log_to_file": True}}
+            {'logging': {'log_directory': str(execution.log_dir), 'log_to_file': True}}
         )
 
 
-def from_dict(settings):
-    """Read settings from a flat dictionary."""
-    nipype.load(settings)
-    execution.load(settings)
-    workflow.load(settings)
+class seeds(_Config):
+    """Initialize the PRNG and track random seed assignments"""
+
+    _random_seed = None
+    master = None
+    """Master random seed to initialize the Pseudorandom Number Generator (PRNG)"""
+    ants = None
+    """Seed used for antsRegistration, antsAI, antsMotionCorr"""
+    numpy = None
+    """Seed used by NumPy"""
+
+    @classmethod
+    def init(cls):
+        if cls._random_seed is not None:
+            cls.master = cls._random_seed
+        if cls.master is None:
+            cls.master = random.randint(1, 65536)
+        random.seed(cls.master)  # initialize the PRNG
+        # functions to set program specific seeds
+        cls.ants = _set_ants_seed()
+        cls.numpy = _set_numpy_seed()
+
+
+def _set_ants_seed():
+    """Fix random seed for antsRegistration, antsAI, antsMotionCorr"""
+    val = random.randint(1, 65536)
+    os.environ['ANTS_RANDOM_SEED'] = str(val)
+    return val
+
+
+def _set_numpy_seed():
+    """NumPy's random seed is independent from Python's `random` module"""
+    import numpy as np
+
+    val = random.randint(1, 65536)
+    np.random.seed(val)
+    return val
+
+
+def from_dict(settings, init=True, ignore=None):
+    """Read settings from a flat dictionary.
+
+    Arguments
+    ---------
+    setting : dict
+        Settings to apply to any configuration
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    ignore : :py:class:`~collections.abc.Container`
+        Collection of keys in ``setting`` to ignore
+    """
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
+
+    nipype.load(settings, init=initialize('nipype'), ignore=ignore)
+    execution.load(settings, init=initialize('execution'), ignore=ignore)
+    workflow.load(settings, init=initialize('workflow'), ignore=ignore)
+    seeds.load(settings, init=initialize('seeds'), ignore=ignore)
+
     loggers.init()
 
 
-def load(filename):
-    """Load settings from file."""
+def load(filename, skip=None, init=True):
+    """Load settings from file.
+
+    Arguments
+    ---------
+    filename : :py:class:`os.PathLike`
+        TOML file containing dMRIPrep configuration.
+    skip : dict or None
+        Sets of values to ignore during load, keyed by section name
+    init : `bool` or :py:class:`~collections.abc.Container`
+        Initialize all, none, or a subset of configurations.
+    """
     from toml import loads
+
+    skip = skip or {}
+
+    # Accept global True/False or container of configs to initialize
+    def initialize(x):
+        return init if init in (True, False) else x in init
 
     filename = Path(filename)
     settings = loads(filename.read_text())
     for sectionname, configs in settings.items():
-        if sectionname != "environment":
+        if sectionname != 'environment':
             section = getattr(sys.modules[__name__], sectionname)
-            section.load(configs)
+            ignore = skip.get(sectionname)
+            section.load(configs, ignore=ignore, init=initialize(sectionname))
     init_spaces()
 
 
 def get(flat=False):
     """Get config as a dict."""
     settings = {
-        "environment": environment.get(),
-        "execution": execution.get(),
-        "workflow": workflow.get(),
-        "nipype": nipype.get(),
+        'environment': environment.get(),
+        'execution': execution.get(),
+        'workflow': workflow.get(),
+        'nipype': nipype.get(),
     }
     if not flat:
         return settings
 
     return {
-        ".".join((section, k)): v
-        for section, configs in settings.items()
-        for k, v in configs.items()
+        f'{section}.{k}': v for section, configs in settings.items() for k, v in configs.items()
     }
 
 
-def dumps(flat=False):
+def dumps():
     """Format config into toml."""
     from toml import dumps
 
-    return dumps(get(flat=flat))
+    settings = get()
+    # Serialize to play nice with TOML
+    if pg := settings['execution'].get('processing_groups'):
+        settings['execution']['processing_groups'] = _serialize_pg(pg)
+
+    return dumps(settings)
 
 
 def to_filename(filename):
@@ -560,7 +749,7 @@ def init_spaces(checkpoint=True):
     spaces = execution.output_spaces or SpatialReferences()
     if not isinstance(spaces, SpatialReferences):
         spaces = SpatialReferences(
-            [ref for s in spaces.split(" ") for ref in Reference.from_string(s)]
+            [ref for s in spaces.split(' ') for ref in Reference.from_string(s)]
         )
 
     if checkpoint and not spaces.is_cached():
@@ -568,3 +757,50 @@ def init_spaces(checkpoint=True):
 
     # Make the SpatialReferences object available
     workflow.spaces = spaces
+
+
+def _serialize_pg(value: list[tuple[str, str | list[str] | None]]) -> list[str]:
+    """
+    Serialize a list of participant-session tuples to be TOML-compatible.
+
+    Examples
+    --------
+    >>> _serialize_pg([('01', 'pre'), ('01', ['post'])])
+    ['sub-01_ses-pre', 'sub-01_ses-post']
+    >>> _serialize_pg([('01', ['pre', 'post']), ('02', ['post'])])
+    ['sub-01_ses-pre,post', 'sub-02_ses-post']
+    >>> _serialize_pg([('01', None), ('02', ['pre'])])
+    ['sub-01', 'sub-02_ses-pre']
+    """
+    serial = []
+    for sub, ses in value:
+        if ses is None:
+            serial.append(f'sub-{sub}')
+            continue
+        if isinstance(ses, str):
+            ses = [ses]
+        serial.append(f'sub-{sub}_ses-{",".join(ses)}')
+    return serial
+
+
+def _deserialize_pg(value: list[str]) -> list[tuple[str, list[str] | None]]:
+    """
+    Deserialize a list of participant-session tuples to be TOML-compatible.
+
+    Examples
+    --------
+    >>> _deserialize_pg(['sub-01_ses-pre', 'sub-01_ses-post'])
+    [('01', ['pre']), ('01', ['post'])]
+    >>> _deserialize_pg(['sub-01_ses-pre,post', 'sub-02_ses-post'])
+    [('01', ['pre', 'post']), ('02', ['post'])]
+    >>> _deserialize_pg(['sub-01', 'sub-02_ses-pre'])
+    [('01', None), ('02', ['pre'])]
+    """
+    deserial = []
+    for val in value:
+        sub, _, ses = val.partition('_')
+        sub = sub.removeprefix('sub-')
+        if ses:
+            ses = ses.removeprefix('ses-').split(',')
+        deserial.append((sub, ses or None))
+    return deserial
