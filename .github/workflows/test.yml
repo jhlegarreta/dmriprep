@@ -70,7 +70,7 @@ jobs:
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
       - name: Fetch DIPY test data
-        run: uv run python scripts/fetch_dipy.py
+        run: uv run python -m dmriprep.data.tests
       - name: Install tox
         run: |
           uv tool install --with=tox-uv --with=tox-gh-actions tox

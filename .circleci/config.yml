@@ -344,7 +344,7 @@ jobs:
               -v /tmp/dipy-data:/root/.cache/data \
               -w /app \
               nipreps/dmriprep:test \
-              python scripts/fetch_dipy.py
+              python -m dmriprep.data.tests
       - run:
           name: Run dMRIPrep tests
           no_output_timeout: 2h
