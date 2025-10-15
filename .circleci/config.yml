@@ -345,6 +345,10 @@ jobs:
               -w /app \
               nipreps/dmriprep:test \
               python -m dmriprep.data.tests
+      - save_cache:
+          key: dipy-v0-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/dipy-data
       - run:
           name: Run dMRIPrep tests
           no_output_timeout: 2h
@@ -358,10 +362,6 @@ jobs:
 
       - store_artifacts:
           path: /tmp/data/reports
-      - save_cache:
-          key: dipy-v0-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /tmp/dipy-data
 
   build_docs:
     docker:
