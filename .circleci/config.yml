@@ -350,8 +350,9 @@ jobs:
           no_output_timeout: 2h
           command: |
             docker run -ti --rm=false \
-              -e TEST_READONLY_FILESYSTEM=1 -v $HOME:/home/readonly:ro \
-              -v /tmp/dipy-data:/root/.cache/data \
+              -e TEST_READONLY_FILESYSTEM=1 -e DMRIPREP_TESTS_DATA=/tmp/dipy \
+              -v $HOME:/home/readonly:ro \
+              -v /tmp/dipy-data:/tmp/dipy \
               --entrypoint="pytest" nipreps/dmriprep:test \
               --pyargs dmriprep -svx --doctest-modules
 
