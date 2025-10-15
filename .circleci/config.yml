@@ -329,17 +329,38 @@ jobs:
       - run: *setup_docker_registry
       - run: *pull_from_registry
       - run: *pull_test_image_from_registry
+      - restore_cache:
+          keys:
+            - dipy-v0-{{ .Branch }}-{{ .Revision }}
+            - dipy-v0--{{ .Revision }}
+            - dipy-v0-{{ .Branch }}-
+            - dipy-v0-master-
+            - dipy-v0-
+      - run:
+          name: Fetch DIPY test data
+          command: |
+            mkdir -p /tmp/dipy-data
+            docker run --rm \
+              -v /tmp/dipy-data:/root/.cache/data \
+              -w /app \
+              nipreps/dmriprep:test \
+              python scripts/fetch_dipy.py
       - run:
           name: Run dMRIPrep tests
           no_output_timeout: 2h
           command: |
             docker run -ti --rm=false \
               -e TEST_READONLY_FILESYSTEM=1 -v $HOME:/home/readonly:ro \
+              -v /tmp/dipy-data:/root/.cache/data \
               --entrypoint="pytest" nipreps/dmriprep:test \
               --pyargs dmriprep -svx --doctest-modules
 
       - store_artifacts:
           path: /tmp/data/reports
+      - save_cache:
+          key: dipy-v0-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/dipy-data
 
   build_docs:
     docker:
