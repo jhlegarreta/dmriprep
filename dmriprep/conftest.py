@@ -29,25 +29,14 @@ from pathlib import Path
 import nibabel as nb
 import numpy as np
 import pytest
-from dipy.data.fetcher import UW_RW_URL, _make_fetcher
+
+from dmriprep.data.tests import testdata_fetcher
 
 _dipy_datadir_root = os.getenv('DMRIPREP_TESTS_DATA') or Path.home()
 dipy_datadir = Path(_dipy_datadir_root) / '.cache' / 'data'
 dipy_datadir.mkdir(parents=True, exist_ok=True)
 
-_make_fetcher(
-    'fetch_sherbrooke_3shell',
-    str(dipy_datadir),
-    UW_RW_URL + '1773/38475/',
-    ['HARDI193.nii.gz', 'HARDI193.bval', 'HARDI193.bvec'],
-    ['HARDI193.nii.gz', 'HARDI193.bval', 'HARDI193.bvec'],
-    [
-        '0b735e8f16695a37bfbd66aab136eb66',
-        'e9b9bb56252503ea49d31fb30a0ac637',
-        '0c83f7e8b917cd677ad58a078658ebb7',
-    ],
-    doc='Download a 3shell HARDI dataset with 192 gradient direction',
-)()
+testdata_fetcher(folder=str(dipy_datadir))()
 
 _sherbrooke_data = {
     'dwi_file': dipy_datadir / 'HARDI193.nii.gz',
