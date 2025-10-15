@@ -62,6 +62,8 @@ def init_dwi_wf(
         File path of the b-vectors
     in_bval
         File path of the b-values
+    metadata
+        dwi metadata
     fmap
         File path of the fieldmap
     fmap_ref

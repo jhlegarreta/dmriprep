@@ -33,6 +33,7 @@ from .. import config
 
 B0_THRESHOLD = 50
 BVEC_NORM_EPSILON = 0.1
+BVAL_ROUND = -2
 
 
 class DiffusionGradientTable:
@@ -41,6 +42,7 @@ class DiffusionGradientTable:
     __slots__ = [
         '_affine',
         '_b0_thres',
+        '_b_mag',
         '_b_scale',
         '_bvals',
         '_bvec_norm_epsilon',
@@ -54,6 +56,7 @@ class DiffusionGradientTable:
     def __init__(
         self,
         b0_threshold=B0_THRESHOLD,
+        b_mag=None,
         b_scale=True,
         bvals=None,
         bvec_norm_epsilon=BVEC_NORM_EPSILON,
@@ -70,12 +73,14 @@ class DiffusionGradientTable:
         ----------
         b0_threshold : :obj:`float`
             The upper threshold to consider a low-b shell as :math:`b=0`.
+        b_mag : :obj:`int`
+            The order of magnitude to round the b-values.
         b_scale : :obj:`bool`
             Automatically scale the *b*-values with the norm of the corresponding
             *b*-vectors before the latter are normalized.
         bvals : str or os.pathlike or numpy.ndarray
             File path of the b-values.
-        b_vec_norm_epsilon : :obj:`float`
+        bvec_norm_epsilon : :obj:`float`
             The minimum difference in the norm of two *b*-vectors to consider them different.
         bvecs : str or os.pathlike or numpy.ndarray
             File path of the b-vectors.
@@ -117,6 +122,7 @@ class DiffusionGradientTable:
         """
         self._affine = None
         self._b0_thres = b0_threshold
+        self._b_mag = b_mag
         self._b_scale = b_scale
         self._bvals = None
         self._bvec_norm_epsilon = bvec_norm_epsilon
@@ -197,7 +203,13 @@ class DiffusionGradientTable:
             value = np.loadtxt(str(value)).flatten()
         if self.bvecs is not None and value.shape[0] != self.bvecs.shape[0]:
             raise ValueError('The number of b-vectors and b-values do not match')
-        self._bvals = np.array(value)
+        self._bvals = np.round(np.array(value) - 1, BVAL_ROUND)
+
+    @property
+    def count_shells(self):
+        """Count the number of volumes per b-value."""
+        bvals_set = sorted({int(b) for b in self._bvals})
+        return {b: int((self._bvals == b).sum()) for b in bvals_set}
 
     @property
     def b0mask(self):
@@ -214,6 +226,7 @@ class DiffusionGradientTable:
             self.bvals,
             b0_threshold=self._b0_thres,
             bvec_norm_epsilon=self._bvec_norm_epsilon,
+            b_mag=self._b_mag,
             b_scale=self._b_scale,
             raise_error=self._raise_inconsistent,
         )
@@ -303,6 +316,7 @@ def normalize_gradients(
     bvals,
     b0_threshold=B0_THRESHOLD,
     bvec_norm_epsilon=BVEC_NORM_EPSILON,
+    b_mag=None,
     b_scale=True,
     raise_error=False,
 ):
@@ -310,7 +324,7 @@ def normalize_gradients(
     Normalize b-vectors and b-values.
 
     The resulting b-vectors will be of unit length for the non-zero b-values.
-    The resultinb b-values will be normalized by the square of the
+    The resulting b-values will be normalized by the square of the
     corresponding vector amplitude.
 
     Parameters
@@ -375,7 +389,7 @@ def normalize_gradients(
             raise ValueError(msg)
         config.loggers.cli.warning(msg)
 
-    # Rescale b-vals if requested
+    # Rescale bvals if requested
     if b_scale:
         bvals[~b0s] *= np.linalg.norm(bvecs[~b0s], axis=1) ** 2
 
@@ -383,9 +397,17 @@ def normalize_gradients(
     bvecs[b0s, :3] = np.zeros(3)
 
     # Round bvals
-    bvals = round_bvals(bvals)
+    bvals = round_bvals(bvals, bmag=b_mag)
 
-    # Rescale b-vecs, skipping b0's, on the appropriate axis to unit-norm length.
+    # Ensure rounding bvals doesn't change the number of b0s
+    rounded_b0s = bvals == 0
+    if not np.all(b0s == rounded_b0s):
+        msg = f'Inconsistent b0s before ({b0s.sum()}) and after rounding ({rounded_b0s.sum()}).'
+        if raise_error:
+            raise ValueError(msg)
+        config.loggers.cli.warning(msg)
+
+    # Rescale bvecs, skipping b0's, on the appropriate axis to unit-norm length.
     bvecs[~b0s] /= np.linalg.norm(bvecs[~b0s], axis=1)[..., np.newaxis]
     return bvecs, bvals.astype('uint16')
 
