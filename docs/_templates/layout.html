@@ -7,5 +7,5 @@
 
 {% block side_nav_brand %}
   {{ super() if super is defined else '' }}
-  <div class="wy-side-nav-version">{{ version }}</div>
+  <div class="wy-side-nav-version">{{ display_version | default(version) }}</div>
 {% endblock %}
