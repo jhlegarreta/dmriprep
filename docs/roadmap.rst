@@ -93,7 +93,7 @@ Version 0.6 (December, 2021)
     - Start execution
 
 Version 0.7 (January, 2022)
--------------------------
+---------------------------
 The *noisy month*. This is not a musical event, but a development cycle where we will
 focus on the implementation of steps addressing noise in DWI:
 
