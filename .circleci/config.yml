@@ -331,22 +331,24 @@ jobs:
       - run: *pull_test_image_from_registry
       - restore_cache:
           keys:
-            - dipy-v0-{{ .Branch }}-{{ .Revision }}
-            - dipy-v0--{{ .Revision }}
-            - dipy-v0-{{ .Branch }}-
-            - dipy-v0-master-
-            - dipy-v0-
+            - dipy-v1-{{ .Branch }}-{{ .Revision }}
+            - dipy-v1--{{ .Revision }}
+            - dipy-v1-{{ .Branch }}-
+            - dipy-v1-master-
+            - dipy-v1-
       - run:
           name: Fetch DIPY test data
           command: |
-            mkdir -p /tmp/dipy-data
+            export DMRIPREP_TESTS_CACHE=/tmp/dipy-data
+            mkdir -p "${DMRIPREP_TESTS_CACHE}"
             docker run --rm \
-              -v /tmp/dipy-data:/root/.cache/data \
+              -e DMRIPREP_TESTS_DATA=/tmp/dipy \
+              -v "${DMRIPREP_TESTS_CACHE}:/tmp/dipy" \
               -w /app \
               nipreps/dmriprep:test \
               python -m dmriprep.data.tests
       - save_cache:
-          key: dipy-v0-{{ .Branch }}-{{ .Revision }}
+          key: dipy-v1-{{ .Branch }}-{{ .Revision }}
           paths:
             - /tmp/dipy-data
       - run:
