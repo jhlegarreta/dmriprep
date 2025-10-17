@@ -10,6 +10,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import os
+import subprocess
+
 from packaging.version import Version
 
 import dmriprep as _dmriprep
@@ -29,6 +32,67 @@ author = 'The dMRIPrep Developers'
 
 # The short X.Y version
 version = Version(__version__).public
+# Additional metadata used when rendering templates.
+display_version = version
+
+
+def _latest_git_tag():
+    """Return the most recently created Git tag, if available."""
+
+    try:
+        latest = subprocess.run(
+            [
+                'git',
+                'for-each-ref',
+                '--sort=-creatordate',
+                '--count',
+                '1',
+                '--format',
+                '%(refname:strip=2)',
+                'refs/tags',
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+    tag = latest.stdout.strip()
+    return tag or None
+
+
+def _version_suffix():
+    """Determine whether the rendered version should display a suffix."""
+
+    rtd_version_type = os.environ.get('READTHEDOCS_VERSION_TYPE')
+    version_slug = os.environ.get('READTHEDOCS_VERSION')
+    git_identifier = os.environ.get('READTHEDOCS_GIT_IDENTIFIER')
+
+    # Highlight the default branch build on Read the Docs.
+    if rtd_version_type == 'branch' and git_identifier in {'master', 'main'}:
+        return ' (master)'
+
+    if not rtd_version_type and version_slug == 'latest':
+        return ' (master)'
+
+    # Highlight the most recent release tag.
+    if rtd_version_type == 'tag':
+        tag_name = git_identifier or version_slug
+        latest_tag = _latest_git_tag()
+        if tag_name and latest_tag and tag_name == latest_tag:
+            return ' (latest)'
+
+    if not rtd_version_type and version_slug:
+        latest_tag = _latest_git_tag()
+        if version_slug and latest_tag and version_slug == latest_tag:
+            return ' (latest)'
+
+    return ''
+
+
+display_version += _version_suffix()
 # The full version, including alpha/beta/rc tags
 release = version
 
@@ -133,6 +197,8 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_css_files = ['css/version.css']
+html_context = {'display_version': display_version}
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
