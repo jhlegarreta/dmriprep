@@ -37,6 +37,16 @@ from bids.utils import listify
 
 from dmriprep.data import load as load_data
 
+DEFAULT_BIDS_IGNORE = {
+    '*.html',
+    'logs/',
+    'figures/',  # Reports
+    '*_xfm.*',  # Unspecified transform files
+    '*.surf.gii',  # Unspecified structural outputs
+    # Unspecified diffusion outputs
+    '*_dwiref.nii.gz',
+}
+
 
 @cache
 def _get_layout(derivatives_dir: Path) -> BIDSLayout:
@@ -250,6 +260,10 @@ def validate_input_dir(exec_env, bids_dir, participant_label, need_T1w=True):
             subprocess.check_call(['bids-validator', bids_dir, '-c', temp.name])  # noqa: S607
         except FileNotFoundError:
             print('bids-validator does not appear to be installed', file=sys.stderr)
+
+
+def write_bidsignore(deriv_dir, bids_ignore=DEFAULT_BIDS_IGNORE):
+    (Path(deriv_dir) / '.bidsignore').write_text('\n'.join(bids_ignore) + '\n')
 
 
 def _get_shub_version(singularity_url):
