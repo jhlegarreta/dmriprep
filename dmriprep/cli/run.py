@@ -163,22 +163,23 @@ def main():
             config.execution.participant_label,
             config.execution.output_dir,
             config.execution.run_uuid,
-            config=load('config/reports-spec.yml'),
+            config=load('reports-spec.yml'),
             packagename='dmriprep',
         )
-        write_derivative_description(
-            config.execution.bids_dir,
-            config.execution.dmriprep_dir,
-            dataset_links=config.execution.dataset_links,
-        )
-        write_bidsignore(config.execution.dmriprep_dir)
-
+        # Report errors in report generation immediately
         if failed_reports:
             msg = (
                 'Report generation was not successful for the following participants '
                 f': {", ".join(failed_reports)}.'
             )
             config.loggers.cli.error(msg)
+
+        write_derivative_description(
+            config.execution.bids_dir,
+            config.execution.output_dir,
+            dataset_links=config.execution.dataset_links,
+        )
+        write_bidsignore(config.execution.output_dir)
 
         sys.exit(int((errno + len(failed_reports)) > 0))
 
