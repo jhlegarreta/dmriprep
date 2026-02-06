@@ -49,6 +49,30 @@ dMRIPrep performs basic preprocessing steps such as head-motion correction,
 susceptibility-derived distortion correction, eddy current correction, etc.
 providing outputs that can be easily submitted to a variety of diffusion models.
 
+Development
+-----------
+dMRIPrep uses `pixi <https://pixi.sh>`__ for environment management on Linux.
+
+.. code-block:: bash
+
+    # Install pixi
+    curl -fsSL https://pixi.sh/install.sh | bash
+
+    # Set up development environment
+    pixi install
+
+    # Run tests
+    pixi run test
+
+    # Check code style
+    pixi run -e dev lint
+
+On macOS, use pip to install:
+
+.. code-block:: bash
+
+    pip install -e ".[dev,test]"
+
 Getting involved
 ----------------
 We welcome all contributions!

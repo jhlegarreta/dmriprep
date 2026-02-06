@@ -12,47 +12,58 @@ dMRIPrep is a robust, analysis-agnostic preprocessing pipeline for diffusion MRI
 
 ## Common Commands
 
+### Development Setup
+```bash
+# Install pixi (if not already installed)
+curl -fsSL https://pixi.sh/install.sh | bash
+
+# Create development environment (Linux only, see note below)
+pixi install
+
+# Or specific environment
+pixi install -e test
+```
+
+**Note:** Pixi environments currently only support `linux-64` due to a dependency
+conflict between nifreeze and nitransforms. On macOS, use pip:
+```bash
+pip install -e ".[dev,test]"
+```
+
 ### Testing
 ```bash
-# Run all tests with coverage
-pytest dmriprep -svx
+# Run tests
+pixi run test
 
-# Run tests in parallel
-pytest dmriprep -n auto
-
-# Run specific test file
-pytest dmriprep/cli/tests/test_parser.py -v
+# Run tests with coverage
+pixi run test-cov
 
 # Run tests via tox (all Python versions)
-tox
+pixi run -e test tox
 
-# Specific Python version
-tox -e py312
+# Run specific test file (within pixi shell)
+pixi shell -e test
+pytest dmriprep/cli/tests/test_parser.py -v
 ```
 
 ### Code Quality
 ```bash
 # Check style
-tox -e style
+pixi run -e dev lint
+pixi run -e dev style
 
 # Auto-fix style issues
-tox -e style-fix
+pixi run -e dev style-fix
+pixi run -e dev format
 
-# Spellcheck
-tox -e spellcheck
-
-# Or directly with ruff
-ruff check dmriprep
-ruff format dmriprep
+# Spellcheck (via tox)
+pixi run -e test tox -e spellcheck
 ```
 
 ### Building
 ```bash
-# Install in development mode
+# Install in development mode (alternative to pixi)
 pip install -e ".[dev,test]"
-
-# Or with pixi (preferred for full environment)
-pixi install -e editable
 
 # Build distributions
 python -m build
@@ -60,11 +71,11 @@ python -m build
 
 ### Documentation
 ```bash
-# Build docs with pixi
+# Build docs
 pixi run -e docs build-docs
 
-# Live preview
-pixi run -e docs docs  # serves at localhost:8000
+# Live preview (serves at localhost:8000)
+pixi run -e docs docs
 ```
 
 ## Architecture

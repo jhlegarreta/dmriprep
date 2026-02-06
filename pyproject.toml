@@ -228,8 +228,10 @@ source = [
 
 [tool.pixi.workspace]
 channels = ["https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public", "mrtrix3", "conda-forge"]
+# NOTE: osx-arm64 disabled due to nifreeze/nitransforms version conflict
+# Re-enable when nifreeze releases a version compatible with nitransforms>=25.0.1
 platforms = ["linux-64"]
-# platforms = ["linux-64", "osx-arm64"]  # Enable for MacOS
+# platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.feature.documentation.pypi-dependencies]
 niworkflows = ">=1.14.2"
@@ -299,15 +301,27 @@ dmriprep = { path = ".", editable = false }
 [tool.pixi.feature.production.dependencies]
 pandoc = ">=3.8.2,<4"
 
+[tool.pixi.feature.dev.pypi-dependencies]
+dmriprep = { path = ".", editable = true, extras = ["dev"] }
+
+[tool.pixi.feature.dev.tasks]
+lint = { cmd = "ruff check dmriprep", description = "Run linter" }
+format = { cmd = "ruff format dmriprep", description = "Format code" }
+style = { cmd = "ruff check --diff dmriprep && ruff format --diff dmriprep", description = "Check style" }
+style-fix = { cmd = "ruff check --fix dmriprep && ruff format dmriprep", description = "Fix style issues" }
+
 [tool.pixi.environments]
 # Local installs will use editable
 default = { features = ["editable"], solve-group = "default" }
-test = { features = ["editable", "pytest"], solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+test = { features = ["pytest", "dev"], solve-group = "default" }
 docs = { features = ["documentation", "doc"], solve-group = "documentation", no-default-feature = true }
 # Use "dmriprep" feature for production environment, so it is identifiable
 dmriprep = { features = ["production", "container", "telemetry"], solve-group = "production" }
 
 [tool.pixi.tasks]
+test = { cmd = "pytest dmriprep -svx", description = "Run tests" }
+test-cov = { cmd = "pytest dmriprep --cov=dmriprep --cov-report=term-missing", description = "Run tests with coverage" }
 
 [tool.pixi.dependencies]
 python = ">=3.10"
