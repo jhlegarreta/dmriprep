@@ -45,8 +45,6 @@ from nipype.interfaces.base import (
 from nipype.pipeline import engine as pe
 from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
-from dmriprep import config
-
 
 def init_dwi_native_wf(
     *,

@@ -227,7 +227,9 @@ enabling single-interpolation resampling in downstream processing.
             (dwi_reference_wf, hmc_buffer, [('outputnode.dwi_reference', 'hmc_dwiref')]),
         ])  # fmt:skip
     else:
-        config.loggers.workflow.info(f'Found precomputed HMC reference: {precomputed["hmc_dwiref"]}')
+        config.loggers.workflow.info(
+            f'Found precomputed HMC reference: {precomputed["hmc_dwiref"]}'
+        )
         hmc_buffer.inputs.hmc_dwiref = precomputed['hmc_dwiref']
 
     # Stage 2: Brain extraction

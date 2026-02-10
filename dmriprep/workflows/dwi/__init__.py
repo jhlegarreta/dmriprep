@@ -35,15 +35,15 @@ from dmriprep.workflows.dwi.registration import init_dwi_reg_wf
 from dmriprep.workflows.dwi.resampling import init_dwi_native_wf, init_dwi_std_wf
 
 __all__ = [
-    'init_dwi_wf',
-    'init_dwi_fit_wf',
-    'init_dwi_reference_wf',
-    'init_dwi_hmc_wf',
-    'init_dwi_reg_wf',
-    'init_dwi_native_wf',
-    'init_dwi_std_wf',
     'init_dwi_derivatives_wf',
     'init_dwi_fit_derivatives_wf',
+    'init_dwi_fit_wf',
+    'init_dwi_hmc_wf',
+    'init_dwi_native_wf',
     'init_dwi_preproc_derivatives_wf',
+    'init_dwi_reference_wf',
+    'init_dwi_reg_wf',
+    'init_dwi_std_wf',
+    'init_dwi_wf',
     'init_reportlets_wf',
 ]

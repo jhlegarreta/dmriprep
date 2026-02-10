@@ -333,14 +333,16 @@ def _write_motion_params(motion_affines, filename):
             T = affine[:3, 3] if affine.shape == (4, 4) else np.zeros(3)
             rx, ry, rz = 0, 0, 0
 
-        params.append({
-            'trans_x': T[0],
-            'trans_y': T[1],
-            'trans_z': T[2],
-            'rot_x': rx,
-            'rot_y': ry,
-            'rot_z': rz,
-        })
+        params.append(
+            {
+                'trans_x': T[0],
+                'trans_y': T[1],
+                'trans_z': T[2],
+                'rot_x': rx,
+                'rot_y': ry,
+                'rot_z': rz,
+            }
+        )
 
     df = pd.DataFrame(params)
     df.to_csv(filename, sep='\t', index=False)
