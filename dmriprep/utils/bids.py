@@ -132,33 +132,37 @@ def extract_entities(file_list):
     return {key: _unique(val) for key, val in entities.items()}
 
 
-def write_derivative_description(bids_dir, deriv_dir):
-    from ..__about__ import DOWNLOAD_URL, __url__, __version__
+def write_derivative_description(bids_dir, deriv_dir, dataset_links=None):
+    from .. import __version__
 
     bids_dir = Path(bids_dir)
     deriv_dir = Path(deriv_dir)
+    download_url = f'https://github.com/nipreps/dmriprep/archive/{__version__}.tar.gz'
     desc = {
         'Name': 'dMRIPrep - dMRI PREProcessing workflow',
-        'BIDSVersion': '1.1.1',
-        'PipelineDescription': {
-            'Name': 'dMRIPrep',
-            'Version': __version__,
-            'CodeURL': DOWNLOAD_URL,
-        },
-        'CodeURL': __url__,
+        'BIDSVersion': '1.4.0',
+        'DatasetType': 'derivative',
+        'GeneratedBy': [
+            {
+                'Name': 'dMRIPrep',
+                'Version': __version__,
+                'CodeURL': download_url,
+            }
+        ],
         'HowToAcknowledge': 'Please cite https://doi.org/10.5281/zenodo.3392201.',
     }
 
     # Keys that can only be set by environment
     if 'DMRIPREP_DOCKER_TAG' in os.environ:
-        desc['DockerHubContainerTag'] = os.environ['DMRIPREP_DOCKER_TAG']
+        desc['GeneratedBy'][0]['Container'] = {
+            'Type': 'docker',
+            'Tag': f'nipreps/dmriprep:{os.environ["DMRIPREP_DOCKER_TAG"]}',
+        }
     if 'DMRIPREP_SINGULARITY_URL' in os.environ:
-        singularity_url = os.environ['DMRIPREP_SINGULARITY_URL']
-        desc['SingularityContainerURL'] = singularity_url
-
-        singularity_md5 = _get_shub_version(singularity_url)
-        if singularity_md5 and singularity_md5 is not NotImplemented:
-            desc['SingularityContainerMD5'] = _get_shub_version(singularity_url)
+        desc['GeneratedBy'][0]['Container'] = {
+            'Type': 'singularity',
+            'URI': os.getenv('DMRIPREP_SINGULARITY_URL'),
+        }
 
     # Keys deriving from source dataset
     orig_desc = {}
@@ -168,9 +172,22 @@ def write_derivative_description(bids_dir, deriv_dir):
             orig_desc = json.load(fobj)
 
     if 'DatasetDOI' in orig_desc:
-        desc['SourceDatasetsURLs'] = [f'https://doi.org/{orig_desc["DatasetDOI"]}']
+        desc['SourceDatasets'] = [
+            {
+                'URL': f'https://doi.org/{orig_desc["DatasetDOI"]}',
+                'DOI': orig_desc['DatasetDOI'],
+            }
+        ]
     if 'License' in orig_desc:
         desc['License'] = orig_desc['License']
+
+    # Add DatasetLinks
+    if dataset_links:
+        desc['DatasetLinks'] = {name: str(location) for name, location in dataset_links.items()}
+        if 'templateflow' in dataset_links:
+            desc['DatasetLinks']['templateflow'] = (
+                'https://github.com/templateflow/templateflow'
+            )
 
     with (deriv_dir / 'dataset_description.json').open('w') as fobj:
         json.dump(desc, fobj, indent=4)
