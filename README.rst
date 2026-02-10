@@ -67,7 +67,17 @@ dMRIPrep uses `pixi <https://pixi.sh>`__ for environment management on Linux.
     # Check code style
     pixi run -e dev lint
 
-On macOS, use pip to install:
+On platforms other than ``linux-64``, the recommended development setup is
+`micromamba <https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html>`__
+with an existing ``dmriprep`` environment:
+
+.. code-block:: bash
+
+    micromamba activate dmriprep
+    python -m pip install -e ".[dev,test]"
+    python -m pytest
+
+If micromamba is not available, you can still use pip directly:
 
 .. code-block:: bash
 

@@ -25,7 +25,13 @@ pixi install -e test
 ```
 
 **Note:** Pixi environments currently only support `linux-64` due to a dependency
-conflict between nifreeze and nitransforms. On macOS, use pip:
+conflict between nifreeze and nitransforms. On non-`linux-64` platforms, the
+recommended development path is micromamba with a `dmriprep` environment:
+```bash
+micromamba activate dmriprep
+python -m pip install -e ".[dev,test]"
+```
+If micromamba is unavailable, fall back to:
 ```bash
 pip install -e ".[dev,test]"
 ```
@@ -44,6 +50,10 @@ pixi run -e test tox
 # Run specific test file (within pixi shell)
 pixi shell -e test
 pytest dmriprep/cli/tests/test_parser.py -v
+```
+With micromamba:
+```bash
+micromamba run -n dmriprep python -m pytest -q
 ```
 
 ### Code Quality
