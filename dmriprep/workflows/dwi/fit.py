@@ -213,7 +213,7 @@ enabling single-interpolation resampling in downstream processing.
 
     # Check for precomputed derivatives
     have_hmc_ref = 'hmc_dwiref' in precomputed
-    have_mask = 'dwi_mask' in precomputed
+    have_mask = 'mask_dwiref' in precomputed
     have_motion_xfm = precomputed.get('transforms', {}).get('hmc')
     have_coreg_xfm = precomputed.get('transforms', {}).get('dwiref2anat')
 
@@ -243,8 +243,10 @@ enabling single-interpolation resampling in downstream processing.
             (brainextraction_wf, hmc_buffer, [('outputnode.out_mask', 'dwi_mask')]),
         ])  # fmt:skip
     else:
-        config.loggers.workflow.info(f'Found precomputed brain mask: {precomputed["dwi_mask"]}')
-        hmc_buffer.inputs.dwi_mask = precomputed['dwi_mask']
+        config.loggers.workflow.info(
+            f'Found precomputed brain mask: {precomputed["mask_dwiref"]}'
+        )
+        hmc_buffer.inputs.dwi_mask = precomputed['mask_dwiref']
 
     # Stage 3: Head motion and eddy current estimation
     if not have_motion_xfm:
