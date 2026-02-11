@@ -111,13 +111,18 @@ def collect_fieldmaps(
 
     fmap_cache = defaultdict(dict, {})
     fmap_ids = layout.get_fmapids(**entities)
+    required_keys = tuple(spec['fieldmaps'])
 
     for fmap_id in fmap_ids:
+        fmap_data = {}
         for key, query in spec['fieldmaps'].items():
             item = layout.get(return_type='filename', fmapid=fmap_id, **{**entities, **query})
             if not item:
                 continue
-            fmap_cache[fmap_id][key] = item[0] if len(item) == 1 else item
+            fmap_data[key] = item[0] if len(item) == 1 else item
+
+        if all(key in fmap_data for key in required_keys):
+            fmap_cache[fmap_id] = fmap_data
 
     return fmap_cache
 
