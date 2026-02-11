@@ -22,8 +22,6 @@
 #
 """Test BIDS utilities."""
 
-from pathlib import Path
-
 from dmriprep.utils import bids
 
 
@@ -67,7 +65,26 @@ class _MockLayout:
         return self._matches.get(fmapid, {}).get(key, [])
 
 
-def test_collect_fieldmaps_ignores_incomplete_sets(monkeypatch):
+class _MockMissingCoeffStarLayout:
+    def get_fmapids(self, **entities):
+        return ('missing_coeffstar',)
+
+    def get(self, return_type, fmapid, **query):
+        assert return_type == 'filename'
+        assert fmapid == 'missing_coeffstar'
+
+        query_desc = query.get('desc')
+        if query_desc == 'preproc':
+            return ['sub-01_desc-preproc_fieldmap.nii.gz']
+        if isinstance(query_desc, list) and set(query_desc) == {'magnitude', 'epi'}:
+            return ['sub-01_desc-magnitude_fieldmap.nii.gz']
+        if isinstance(query_desc, list) and set(query_desc) == {'coeff', 'coeff0', 'coeff1'}:
+            return []
+
+        raise RuntimeError(f'Unexpected query: {query}')
+
+
+def test_collect_fieldmaps_ignores_incomplete_sets(monkeypatch, tmp_path):
     spec = {
         'fieldmaps': {
             'fieldmap': {'desc': 'preproc'},
@@ -78,7 +95,7 @@ def test_collect_fieldmaps_ignores_incomplete_sets(monkeypatch):
 
     monkeypatch.setattr(bids, '_get_layout', lambda *args, **kwargs: _MockLayout())
 
-    out = bids.collect_fieldmaps(Path('/tmp/derivatives'), entities={'subject': '01'}, spec=spec)
+    out = bids.collect_fieldmaps(tmp_path / 'derivatives', entities={'subject': '01'}, spec=spec)
 
     assert sorted(out) == ['full']
     assert out['full']['fieldmap'] == 'sub-01_desc-preproc_fieldmap.nii.gz'
@@ -87,3 +104,19 @@ def test_collect_fieldmaps_ignores_incomplete_sets(monkeypatch):
         'sub-01_desc-coeff0_fieldmap.nii.gz',
         'sub-01_desc-coeff1_fieldmap.nii.gz',
     ]
+
+
+def test_collect_fieldmaps_ignores_missing_coeffstar(monkeypatch, tmp_path):
+    spec = {
+        'fieldmaps': {
+            'fieldmap': {'desc': 'preproc'},
+            'coeffs': {'desc': ['coeff', 'coeff0', 'coeff1']},
+            'magnitude': {'desc': ['magnitude', 'epi']},
+        }
+    }
+
+    monkeypatch.setattr(bids, '_get_layout', lambda *args, **kwargs: _MockMissingCoeffStarLayout())
+
+    out = bids.collect_fieldmaps(tmp_path / 'derivatives', entities={'subject': '01'}, spec=spec)
+
+    assert out == {}
