@@ -98,6 +98,35 @@ def collect_derivatives(
     return derivs_cache
 
 
+def collect_fieldmaps(
+    derivatives_dir: Path,
+    entities: dict,
+    spec: dict | None = None,
+):
+    """Gather precomputed fieldmap derivatives keyed by fieldmap identifier."""
+    if spec is None:
+        spec = json.loads(load_data.readable('fmap_spec.json').read_text())['queries']
+
+    layout = _get_layout(derivatives_dir)
+
+    fmap_cache = defaultdict(dict, {})
+    fmap_ids = layout.get_fmapids(**entities)
+    required_keys = tuple(spec['fieldmaps'])
+
+    for fmap_id in fmap_ids:
+        fmap_data = {}
+        for key, query in spec['fieldmaps'].items():
+            item = layout.get(return_type='filename', fmapid=fmap_id, **{**entities, **query})
+            if not item:
+                continue
+            fmap_data[key] = item[0] if len(item) == 1 else item
+
+        if all(key in fmap_data for key in required_keys):
+            fmap_cache[fmap_id] = fmap_data
+
+    return fmap_cache
+
+
 def extract_entities(file_list):
     """
     Return a dictionary of common entities given a list of files.

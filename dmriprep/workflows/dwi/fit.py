@@ -307,6 +307,14 @@ enabling single-interpolation resampling in downstream processing.
             omp_nthreads=omp_nthreads,
             write_coeff=True,
         )
+        ensure_fmap_mask = pe.Node(
+            niu.Function(
+                input_names=['fmap_mask', 'fmap_ref'],
+                output_names=['out_mask'],
+                function=_ensure_fmap_mask,
+            ),
+            name='ensure_fmap_mask',
+        )
 
         workflow.connect([
             (inputnode, fmap_select, [
@@ -319,8 +327,12 @@ enabling single-interpolation resampling in downstream processing.
             (fmap_select, coeff2epi_wf, [
                 ('fmap_ref', 'inputnode.fmap_ref'),
                 ('fmap_coeff', 'inputnode.fmap_coeff'),
-                ('fmap_mask', 'inputnode.fmap_mask'),
             ]),
+            (fmap_select, ensure_fmap_mask, [
+                ('fmap_mask', 'fmap_mask'),
+                ('fmap_ref', 'fmap_ref'),
+            ]),
+            (ensure_fmap_mask, coeff2epi_wf, [('out_mask', 'inputnode.fmap_mask')]),
             (hmc_buffer, coeff2epi_wf, [
                 ('hmc_dwiref', 'inputnode.target_ref'),
                 ('dwi_mask', 'inputnode.target_mask'),
@@ -534,3 +546,25 @@ def _extract_b0_volumes(in_file, indices, newpath=None):
     out_img.to_filename(out_file)
 
     return out_file
+
+
+def _ensure_fmap_mask(fmap_mask, fmap_ref):
+    """Return a valid fieldmap mask path, falling back to ``fmap_ref`` if missing."""
+    from pathlib import Path
+
+    if isinstance(fmap_mask, tuple | list):
+        fmap_mask = fmap_mask[0] if fmap_mask else None
+    if isinstance(fmap_ref, tuple | list):
+        if len(fmap_ref) != 1:
+            raise ValueError(f'Expected one fieldmap reference, got {len(fmap_ref)}.')
+        fmap_ref = fmap_ref[0]
+
+    if fmap_mask and fmap_mask != 'MISSING' and Path(fmap_mask).exists():
+        return str(Path(fmap_mask).absolute())
+
+    if fmap_ref is None:
+        raise ValueError('Missing fieldmap reference image for mask fallback.')
+
+    # coeff2epi_wf requires a mask file input; when no mask derivative is available,
+    # use the fieldmap reference itself as an all-positive fallback mask source.
+    return str(Path(fmap_ref).absolute())
