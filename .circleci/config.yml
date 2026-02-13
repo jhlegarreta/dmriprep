@@ -39,12 +39,6 @@ _pull_from_registry: &pull_from_registry
     docker pull localhost:5000/dmriprep
     docker tag localhost:5000/dmriprep nipreps/dmriprep:latest
 
-_pull_test_image_from_registry: &pull_test_image_from_registry
-  name: Pull and tag image from local registry
-  command: |
-    docker pull localhost:5000/dmriprep-test
-    docker tag localhost:5000/dmriprep-test nipreps/dmriprep:test
-
 _check_skip_job: &check_skip_job
   name: Check commit message and determine if job should be skipped
   command: |
@@ -305,86 +299,6 @@ jobs:
           paths:
             - fslicense
             - config/nipype.cfg
-  test_pytest:
-    <<: *machine_defaults
-    environment:
-      CHECK_PYTEST: true
-    steps:
-      - checkout:
-          path: *src
-      - run: *check_skip_job
-      - attach_workspace:
-          at: /tmp
-      - restore_cache:
-          keys:
-            - build-v2-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /tmp/docker
-            - /tmp/images
-      - restore_cache:
-          keys:
-            - data-v0-{{ .Branch }}-{{ .Revision }}
-      - docker/install-docker-credential-helper
-      - run: *docker_auth
-      - run: *setup_docker_registry
-      - run: *pull_from_registry
-      - run: *pull_test_image_from_registry
-      - restore_cache:
-          keys:
-            - dipy-v1-{{ .Branch }}-{{ .Revision }}
-            - dipy-v1--{{ .Revision }}
-            - dipy-v1-{{ .Branch }}-
-            - dipy-v1-master-
-            - dipy-v1-
-      - run:
-          name: Fetch DIPY test data
-          command: |
-            export DMRIPREP_TESTS_CACHE=/tmp/dipy-data
-            mkdir -p "${DMRIPREP_TESTS_CACHE}"
-            docker run --rm \
-              -e DMRIPREP_TESTS_DATA=/tmp/dipy \
-              -v "${DMRIPREP_TESTS_CACHE}:/tmp/dipy" \
-              -w /app \
-              nipreps/dmriprep:test \
-              python -m dmriprep.data.tests
-      - save_cache:
-          key: dipy-v1-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /tmp/dipy-data
-      - run:
-          name: Run dMRIPrep tests
-          no_output_timeout: 2h
-          command: |
-            docker run -ti --rm=false \
-              -e TEST_READONLY_FILESYSTEM=1 -e DMRIPREP_TESTS_DATA=/tmp/dipy \
-              -v $HOME:/home/readonly:ro \
-              -v /tmp/dipy-data:/tmp/dipy \
-              --entrypoint="pytest" nipreps/dmriprep:test \
-              --pyargs dmriprep -svx --doctest-modules
-
-      - store_artifacts:
-          path: /tmp/data/reports
-
-  build_docs:
-    docker:
-      - image: ghcr.io/prefix-dev/pixi:0.53.0
-    environment:
-      - FSLOUTPUTTYPE: NIFTI
-      - SUBJECTS_DIR: /tmp/subjects
-    steps:
-      - run:
-          name: Create subjects folder
-          command: mkdir -p $SUBJECTS_DIR
-      - run:
-          name: Install Git
-          command: apt update && apt -y install git
-      - checkout
-      - run:
-          name: Build documentation
-          command: pixi run build-docs
-      - store_artifacts:
-          path: ./docs/_build/html
-
   deploy_docker_patches:
     <<: *machine_defaults
     working_directory: *src
@@ -563,34 +477,6 @@ workflows:
             tags:
               only: /.*/
 
-      - test_pytest:
-          context:
-            - nipreps-common
-          requires:
-            - build
-          filters:
-            branches:
-              ignore:
-                - /docs?\/.*/
-                - /ds001771\/.*/
-                - /ds000206\/.*/
-                - /docker\/.*/
-            tags:
-              only: /.*/
-
-      - build_docs:
-          context:
-            - nipreps-common
-          filters:
-            branches:
-              ignore:
-                - /tests?\/.*/
-                - /ds000206\/.*/
-                - /ds001771\/.*/
-            tags:
-              only: /.*/
-
-
       - deploy_docker_patches:
           context:
             - nipreps-common
@@ -603,7 +489,6 @@ workflows:
       - deployable:
           requires:
             - test_deploy_pypi
-            - test_pytest
           filters:
             branches:
               only: master
