@@ -459,7 +459,8 @@ def init_dwi_reference_wf(
         HTML reportlet for validation.
 
     """
-    from niworkflows.interfaces.images import RobustAverage, ValidateImage
+    from niworkflows.interfaces.header import ValidateImage
+    from niworkflows.interfaces.images import RobustAverage
     from niworkflows.interfaces.nibabel import IntensityClip
 
     workflow = Workflow(name=name)
