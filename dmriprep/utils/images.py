@@ -324,14 +324,13 @@ def save_3d_to_4d(in_files):
     >>> assert len(threeD_files) == nb.load(out_file).shape[-1]
     """
     # Remove one-sized extra dimensions
+    # Load data eagerly to avoid indexed_gzip seek failures with many open files
     nii_list = []
-    for _i, f in enumerate(in_files):
-        filenii = nb.load(f)
-        filenii = nb.squeeze_image(filenii)
+    for f in in_files:
+        filenii = nb.squeeze_image(nb.load(f))
         if len(filenii.shape) != 3:
             raise RuntimeError(f'Input image ({f}) is not 3D.')
-        else:
-            nii_list.append(filenii)
+        nii_list.append(nb.Nifti1Image(filenii.get_fdata(), filenii.affine, filenii.header))
     img_4d = nb.funcs.concat_images(nii_list)
     out_file = fname_presuffix(in_files[0], suffix='_merged')
     img_4d.to_filename(out_file)

@@ -111,6 +111,7 @@ exclude = [".git_archival.txt"]  # No longer needed in sdist
 packages = ["dmriprep"]
 exclude = [
     "dmriprep/data/tests/work",  # Large test data directory
+    "dmriprep/data/flirtsch/b02b0_2.cnf",  # Symlink to b02b0.cnf (the default)
 ]
 
 ##  The following two sections configure setuptools_scm in the hatch way

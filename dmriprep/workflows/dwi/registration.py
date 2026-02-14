@@ -148,7 +148,7 @@ using the white matter surface as the registration target.
 
         bbr_wf = init_bbreg_wf(
             debug=config.execution.sloppy,
-            epi2t1w_init=dwi2anat_init,
+            epi2t1w_init='header' if dwi2anat_init == 'header' else 'register',
             omp_nthreads=omp_nthreads,
         )
 
@@ -160,8 +160,8 @@ using the white matter surface as the registration target.
                 ('subjects_dir', 'inputnode.subjects_dir'),
             ]),
             (bbr_wf, outputnode, [
-                ('outputnode.itk_epi2t1', 'dwiref2anat_xfm'),
-                ('outputnode.itk_t1_to_epi', 'anat2dwiref_xfm'),
+                ('outputnode.itk_epi_to_t1w', 'dwiref2anat_xfm'),
+                ('outputnode.itk_t1w_to_epi', 'anat2dwiref_xfm'),
                 ('outputnode.fallback', 'fallback'),
                 ('outputnode.out_report', 'out_report'),
             ]),
@@ -173,10 +173,10 @@ The DWI reference was co-registered to the T1w reference using
 `mri_coreg` (FreeSurfer) or `flirt` (FSL) with {dwi2anat_dof}
 degrees of freedom.
 """
-        from niworkflows.interfaces.freesurfer import PatchedMRICoreg
+        from nipype.interfaces.freesurfer import MRICoreg
 
         coreg = pe.Node(
-            PatchedMRICoreg(
+            MRICoreg(
                 dof=dwi2anat_dof,
                 sep=[4, 2],
                 ftol=0.0001,
@@ -194,19 +194,6 @@ degrees of freedom.
             (coreg, outputnode, [
                 ('out_lta_file', 'dwiref2anat_xfm'),
             ]),
-        ])  # fmt:skip
-
-        # Create inverse transform
-        from nipype.interfaces.freesurfer import LTAConvert
-
-        invert_xfm = pe.Node(
-            LTAConvert(invert=True),
-            name='invert_xfm',
-        )
-
-        workflow.connect([
-            (coreg, invert_xfm, [('out_lta_file', 'in_lta')]),
-            (invert_xfm, outputnode, [('out_lta', 'anat2dwiref_xfm')]),
         ])  # fmt:skip
 
         # Set fallback to False (no BBR attempted)
@@ -274,7 +261,7 @@ def init_dwi_t2w_reg_wf(
         Transform from DWI reference to T2w space.
 
     """
-    from niworkflows.interfaces.freesurfer import PatchedMRICoreg
+    from nipype.interfaces.freesurfer import MRICoreg
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
@@ -307,7 +294,7 @@ T2w and diffusion-weighted images.
 
     # Use mri_coreg for T2w registration
     coreg = pe.Node(
-        PatchedMRICoreg(
+        MRICoreg(
             dof=6,
             sep=[4, 2],
             ftol=0.0001,

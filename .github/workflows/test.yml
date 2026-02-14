@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - master
-      - maint/*
-      - next
   pull_request:
     branches:
       - master
