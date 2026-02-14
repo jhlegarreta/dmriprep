@@ -62,7 +62,11 @@ def init_dwi_fit_wf(
             from dmriprep.config.testing import mock_config
             from dmriprep.workflows.dwi.fit import init_dwi_fit_wf
             with mock_config():
-                wf = init_dwi_fit_wf(dwi_file='sub-01_dwi.nii.gz')
+                from dmriprep import config
+                wf = init_dwi_fit_wf(
+                    dwi_file=config.execution.layout.get(
+                        suffix='dwi', extension='.nii.gz')[0].path,
+                )
 
     Parameters
     ----------
@@ -195,8 +199,12 @@ enabling single-interpolation resampling in downstream processing.
 
     # Buffer nodes for precomputed derivatives
     hmc_buffer = pe.Node(
-        niu.IdentityInterface(fields=['hmc_dwiref', 'dwi_mask']),
+        niu.IdentityInterface(fields=['hmc_dwiref']),
         name='hmc_buffer',
+    )
+    mask_buffer = pe.Node(
+        niu.IdentityInterface(fields=['dwi_mask']),
+        name='mask_buffer',
     )
     xfm_buffer = pe.Node(
         niu.IdentityInterface(fields=['motion_xfm', 'dwiref2anat_xfm']),
@@ -240,11 +248,11 @@ enabling single-interpolation resampling in downstream processing.
 
         workflow.connect([
             (hmc_buffer, brainextraction_wf, [('hmc_dwiref', 'inputnode.in_file')]),
-            (brainextraction_wf, hmc_buffer, [('outputnode.out_mask', 'dwi_mask')]),
+            (brainextraction_wf, mask_buffer, [('outputnode.out_mask', 'dwi_mask')]),
         ])  # fmt:skip
     else:
         config.loggers.workflow.info(f'Found precomputed brain mask: {precomputed["mask_dwiref"]}')
-        hmc_buffer.inputs.dwi_mask = precomputed['mask_dwiref']
+        mask_buffer.inputs.dwi_mask = precomputed['mask_dwiref']
 
     # Stage 3: Head motion and eddy current estimation
     if not have_motion_xfm:
@@ -258,10 +266,8 @@ enabling single-interpolation resampling in downstream processing.
                 ('in_bvec', 'inputnode.in_bvec'),
                 ('in_bval', 'inputnode.in_bval'),
             ]),
-            (hmc_buffer, hmc_wf, [
-                ('hmc_dwiref', 'inputnode.dwi_reference'),
-                ('dwi_mask', 'inputnode.dwi_mask'),
-            ]),
+            (hmc_buffer, hmc_wf, [('hmc_dwiref', 'inputnode.dwi_reference')]),
+            (mask_buffer, hmc_wf, [('dwi_mask', 'inputnode.dwi_mask')]),
             (hmc_wf, xfm_buffer, [('outputnode.motion_xfm', 'motion_xfm')]),
             (hmc_wf, outputnode, [('outputnode.out_bvec', 'out_bvec')]),
         ])  # fmt:skip
@@ -333,10 +339,8 @@ enabling single-interpolation resampling in downstream processing.
                 ('fmap_ref', 'fmap_ref'),
             ]),
             (ensure_fmap_mask, coeff2epi_wf, [('out_mask', 'inputnode.fmap_mask')]),
-            (hmc_buffer, coeff2epi_wf, [
-                ('hmc_dwiref', 'inputnode.target_ref'),
-                ('dwi_mask', 'inputnode.target_mask'),
-            ]),
+            (hmc_buffer, coeff2epi_wf, [('hmc_dwiref', 'inputnode.target_ref')]),
+            (mask_buffer, coeff2epi_wf, [('dwi_mask', 'inputnode.target_mask')]),
             (coeff2epi_wf, coreg_buffer, [
                 ('outputnode.fmap_coeff', 'fmap_coeff'),
                 ('outputnode.target2fmap_xfm', 'dwiref2fmap_xfm'),
@@ -388,7 +392,7 @@ enabling single-interpolation resampling in downstream processing.
             ]),
             (t1w_brain, reg_wf, [('out_file', 'inputnode.t1w_brain')]),
             (coreg_buffer, reg_wf, [('coreg_dwiref', 'inputnode.dwi_ref')]),
-            (hmc_buffer, reg_wf, [('dwi_mask', 'inputnode.dwi_mask')]),
+            (mask_buffer, reg_wf, [('dwi_mask', 'inputnode.dwi_mask')]),
             (reg_wf, xfm_buffer, [('outputnode.dwiref2anat_xfm', 'dwiref2anat_xfm')]),
         ])  # fmt:skip
     else:
@@ -399,10 +403,8 @@ enabling single-interpolation resampling in downstream processing.
 
     # Connect outputs
     workflow.connect([
-        (hmc_buffer, outputnode, [
-            ('hmc_dwiref', 'hmc_dwiref'),
-            ('dwi_mask', 'dwi_mask'),
-        ]),
+        (hmc_buffer, outputnode, [('hmc_dwiref', 'hmc_dwiref')]),
+        (mask_buffer, outputnode, [('dwi_mask', 'dwi_mask')]),
         (coreg_buffer, outputnode, [
             ('coreg_dwiref', 'coreg_dwiref'),
             ('fmap_coeff', 'fmap_coeff'),

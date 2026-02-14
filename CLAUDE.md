@@ -56,6 +56,18 @@ With micromamba:
 micromamba run -n dmriprep python -m pytest -q
 ```
 
+Documentation should build, as it builds workflows and serves for unit test:
+
+```bash
+# When pixi is available:
+SPHINXOPTS="-W" pixi run -e docs build-docs
+```
+
+With micromamba:
+```bash
+SPHINXOPTS="-W" micromamba run -n dmriprep make -C docs/ html
+```
+
 ### Code Quality
 ```bash
 # Check style

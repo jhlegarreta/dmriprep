@@ -102,10 +102,6 @@ def init_dwi_hmc_wf(
     - **GP**: Gaussian Process, most flexible but computationally intensive
     - **average**: Simple averaging, fastest but least accurate
 
-    References
-    ----------
-    .. footbibliography::
-
     """
     from dmriprep.interfaces.nifreeze import (
         ExtractTransforms,
