@@ -29,6 +29,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Drop local version suffix for publishable builds
+        if: github.event_name == 'push'
+        run: |
+          if ! grep -q 'local_scheme = "no-local-version"' pyproject.toml; then
+            sed -i -E \
+              's#raw-options = [{] version_scheme = "nipreps-calver" [}]#raw-options = { version_scheme = "nipreps-calver", local_scheme = "no-local-version" }#' \
+              pyproject.toml
+          fi
+          grep -n 'raw-options' pyproject.toml
       - uses: hynek/build-and-inspect-python-package@v2
         with:
           attest-build-provenance-github: ${{ github.event_name != 'pull_request' }}
