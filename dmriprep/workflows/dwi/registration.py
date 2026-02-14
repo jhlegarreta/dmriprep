@@ -148,7 +148,7 @@ using the white matter surface as the registration target.
 
         bbr_wf = init_bbreg_wf(
             debug=config.execution.sloppy,
-            epi2t1w_init=dwi2anat_init,
+            epi2t1w_init='header' if dwi2anat_init == 'header' else 'register',
             omp_nthreads=omp_nthreads,
         )
 
@@ -160,8 +160,8 @@ using the white matter surface as the registration target.
                 ('subjects_dir', 'inputnode.subjects_dir'),
             ]),
             (bbr_wf, outputnode, [
-                ('outputnode.itk_epi2t1', 'dwiref2anat_xfm'),
-                ('outputnode.itk_t1_to_epi', 'anat2dwiref_xfm'),
+                ('outputnode.itk_epi_to_t1w', 'dwiref2anat_xfm'),
+                ('outputnode.itk_t1w_to_epi', 'anat2dwiref_xfm'),
                 ('outputnode.fallback', 'fallback'),
                 ('outputnode.out_report', 'out_report'),
             ]),
