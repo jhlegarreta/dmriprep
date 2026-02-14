@@ -243,9 +243,7 @@ enabling single-interpolation resampling in downstream processing.
             (brainextraction_wf, hmc_buffer, [('outputnode.out_mask', 'dwi_mask')]),
         ])  # fmt:skip
     else:
-        config.loggers.workflow.info(
-            f'Found precomputed brain mask: {precomputed["mask_dwiref"]}'
-        )
+        config.loggers.workflow.info(f'Found precomputed brain mask: {precomputed["mask_dwiref"]}')
         hmc_buffer.inputs.dwi_mask = precomputed['mask_dwiref']
 
     # Stage 3: Head motion and eddy current estimation
